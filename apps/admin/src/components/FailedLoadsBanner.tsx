@@ -1,25 +1,42 @@
-import { cn } from "@alliance/shared/styles/util";
-import { AlertTriangle } from "lucide-react";
+import Button, { ButtonVariant } from "../ui/Button";
+import { Banner, BannerTone } from "../ui/templates/Banner";
 
 type FailedLoadsBannerProps = {
+  /** What failed, lower case: "users". */
   failed: string[];
+  /** What the failure means for what is shown: "The graph is incomplete." */
   consequence: string;
-  className?: string;
+  /** A box inside the body; false runs edge to edge as `Page`'s `banner`. */
+  inline?: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 };
 
+/** Names the parts of a page that failed to load, while the rest still renders. */
 export const FailedLoadsBanner = ({
   failed,
   consequence,
-  className,
+  inline = true,
+  onRetry,
+  retrying,
 }: FailedLoadsBannerProps) =>
   failed.length > 0 ? (
-    <div
-      className={cn(
-        "flex items-start gap-2 border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800",
-        className,
-      )}
+    <Banner
+      tone={BannerTone.Danger}
+      inline={inline}
+      action={
+        onRetry && (
+          <Button
+            size="small"
+            variant={ButtonVariant.Ghost}
+            busy={retrying}
+            onClick={onRetry}
+          >
+            Try again
+          </Button>
+        )
+      }
     >
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-      <span>{`Could not load ${failed.join(", ")}. ${consequence}`}</span>
-    </div>
+      {`Couldn't load ${failed.join(", ")}. ${consequence}`}
+    </Banner>
   ) : null;

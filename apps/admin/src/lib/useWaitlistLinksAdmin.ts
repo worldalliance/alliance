@@ -8,8 +8,6 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const waitlistLinksLoadFailed = "Unable to load waitlist links.";
-
 export function useWaitlistLinksAdmin() {
   return useQuery({
     queryKey: queryKeys.waitlistLinksAdmin(),

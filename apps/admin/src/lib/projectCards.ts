@@ -50,14 +50,6 @@ export const COUNT_LABELS: Record<StepCountBucket, string> = {
   [StepCountBucket.Done]: "done",
 };
 
-export const COUNT_COLORS: Record<StepCountBucket, string> = {
-  [StepCountBucket.Live]: "bg-purple-100 text-purple-800",
-  [StepCountBucket.Planned]: "bg-blue-100 text-blue-800",
-  [StepCountBucket.Draft]: "bg-zinc-100 text-zinc-700",
-  [StepCountBucket.WrappingUp]: "bg-orange-100 text-orange-800",
-  [StepCountBucket.Done]: "bg-green-100 text-green-800",
-};
-
 export enum ProjectFlagKind {
   Stuck = "stuck",
   NoUpdate = "no_update",
@@ -237,6 +229,17 @@ const funnelOf = (steps: ProjectStep[]): FunnelStep[] =>
       retention: previous ? step.usersCompleted / previous : null,
     };
   });
+
+/** Every step, archived and onboarding ones included, as the server lists them. */
+export const allStepsOf = (params: {
+  projectId: number;
+  actions: ProjectStep[];
+}) => {
+  const steps = params.actions
+    .filter((action) => action.project?.id === params.projectId)
+    .sort(byStepOrder);
+  return { steps, funnel: funnelOf(steps) };
+};
 
 const emptyCounts = (): Record<StepCountBucket, number> => ({
   [StepCountBucket.Live]: 0,

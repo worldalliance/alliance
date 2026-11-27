@@ -1,9 +1,9 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
-import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
-import { CustomValidatorDraftsContext } from "../../components/form-fields/customValidatorDrafts";
+import { CustomValidatorDraftsContext } from "../../pages/forms/builder/questions/customValidatorDrafts";
+import { SiteAppProvider } from "../../ui/SiteAppProvider";
 import { EditorSidebar } from "./EditorSidebar";
 
 function InEditorSidebar({ children }: { children: ReactNode }) {

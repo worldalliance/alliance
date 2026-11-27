@@ -1,8 +1,10 @@
 import type { FormResponseDto } from "@alliance/shared/client";
-import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type RespondentSearch = ReturnType<typeof useRespondentSearch>;
+
+/** How many results the list shows. */
+export const RESPONDENT_RESULT_LIMIT = 50;
 
 export function useRespondentSearch(params: {
   responses: FormResponseDto[];
@@ -11,21 +13,6 @@ export function useRespondentSearch(params: {
 }) {
   const { responses, getRespondentName, onSelect } = params;
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const results = useMemo(() => {
     const lowered = query.toLowerCase();
@@ -50,29 +37,9 @@ export function useRespondentSearch(params: {
     (index: number) => {
       onSelect(index);
       setQuery("");
-      setOpen(false);
     },
     [onSelect],
   );
 
-  const handleKeyDown = useCallback(
-    (e: Pick<React.KeyboardEvent, "key" | "preventDefault">) => {
-      if (e.key === "Enter" && results.length > 0) {
-        e.preventDefault();
-        select(results[0].idx);
-      }
-    },
-    [results, select],
-  );
-
-  return {
-    query,
-    setQuery,
-    open,
-    setOpen,
-    containerRef,
-    results,
-    select,
-    handleKeyDown,
-  };
+  return { query, setQuery, results, select };
 }

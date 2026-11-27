@@ -1,13 +1,19 @@
-import { cn } from "@alliance/shared/styles/util";
 import type { Column, Row } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  Pencil,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Pencil } from "lucide-react";
 import React from "react";
+import { Link } from "react-router";
+import Badge from "../../ui/Badge";
+import { cn } from "../../ui/cn";
+import { nameLinkClass } from "../../ui/styles";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../ui/Table";
+import { zIndex } from "../../ui/zIndex";
 import { IdentitySwatch } from "../IdentitySwatch";
 import type { CellContent } from "./cells";
 import type { QuestionColumn } from "./columns";
@@ -51,7 +57,10 @@ const Highlighted: React.FC<{ text: string; query: string }> = ({
   <>
     {highlightSegments({ text, query }).map((segment, index) =>
       segment.match ? (
-        <mark key={index} className="rounded-sm bg-yellow-200 text-inherit">
+        <mark
+          key={index}
+          className="rounded-sm bg-accent-soft font-semibold text-inherit"
+        >
           {segment.text}
         </mark>
       ) : (
@@ -67,12 +76,12 @@ const CellView: React.FC<{
   query: string;
 }> = ({ content, expanded, query }) => {
   if (content?.node) return <>{content.node}</>;
-  if (!content?.text) return <span className="text-zinc-300">—</span>;
+  if (!content?.text) return <span className="text-fg-muted">—</span>;
   const text = expanded ? content.text : (content.summary ?? content.text);
   return (
     <span
       className={cn(
-        expanded ? "whitespace-pre-line break-words" : "block truncate",
+        expanded ? "wrap-break-word whitespace-pre-line" : "block truncate",
       )}
     >
       <Highlighted text={text} query={query} />
@@ -80,7 +89,63 @@ const CellView: React.FC<{
   );
 };
 
-type GridColumn = { leaf: Column<ResponseRow>; column: TableColumn };
+// One width band for every column, so a column per question stays readable
+// and the table scrolls sideways instead of squeezing.
+const COLUMN_WIDTH = "max-w-72 min-w-36";
+
+// The first column stays in view while the rest scroll under it, so it needs
+// its own opaque background in each of the row's states.
+const STICKY_CELL =
+  "sticky left-0 bg-surface group-hover/row:bg-surface-2 group-aria-selected/row:bg-accent-soft";
+
+export type GridColumn = { leaf: Column<ResponseRow>; column: TableColumn };
+
+const SORT_LABEL = { asc: "ascending", desc: "descending" } as const;
+
+const HeaderCell: React.FC<GridColumn & { first: boolean }> = ({
+  leaf,
+  column,
+  first,
+}) => {
+  const sorted = leaf.getIsSorted();
+  const question = column.kind === ColumnKind.Question ? column.question : null;
+  return (
+    <TableHead
+      scope="col"
+      aria-sort={sorted ? SORT_LABEL[sorted] : undefined}
+      className={cn(COLUMN_WIDTH, first && cn(zIndex.nav, "left-0"))}
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        <button
+          type="button"
+          onClick={leaf.getToggleSortingHandler()}
+          className="flex min-w-0 items-center gap-1.5 rounded-sm focus-ring hover:text-fg"
+          title={question ? headerTitle(question) : undefined}
+        >
+          {question && <IdentitySwatch seed={question.fieldId} />}
+          <span
+            className={cn("min-w-0 truncate", question?.retired && "italic")}
+          >
+            {column.label}
+          </span>
+          {question && question.wordings.length > 1 && (
+            <Pencil
+              aria-label="Wording changed between versions"
+              className="size-3 shrink-0"
+            />
+          )}
+          {sorted === "asc" && (
+            <ArrowUp aria-hidden="true" className="size-3.5 shrink-0" />
+          )}
+          {sorted === "desc" && (
+            <ArrowDown aria-hidden="true" className="size-3.5 shrink-0" />
+          )}
+        </button>
+        {question?.retired && <Badge>Retired</Badge>}
+      </span>
+    </TableHead>
+  );
+};
 
 type ResponsesGridProps = {
   visibleColumns: GridColumn[];
@@ -89,7 +154,8 @@ type ResponsesGridProps = {
   expandedRowIds: ReadonlySet<number>;
   onToggleRow: (responseId: number) => void;
   openResponseId: number;
-  onOpenResponse: (responseId: number) => void;
+  /** The URL search that opens a response's sheet. */
+  responseSearch: (responseId: number) => string;
   query: string;
 };
 
@@ -100,148 +166,112 @@ const ResponsesGrid: React.FC<ResponsesGridProps> = ({
   expandedRowIds,
   onToggleRow,
   openResponseId,
-  onOpenResponse,
+  responseSearch,
   query,
-}) => (
-  <div className="overflow-auto rounded-lg border border-zinc-200 bg-white">
-    <table className="min-w-full border-separate border-spacing-0 text-sm">
-      <thead>
-        <tr>
-          <th className="sticky top-0 left-0 z-30 w-9 border-b border-zinc-200 bg-zinc-50 p-0" />
-          {visibleColumns.map(({ leaf, column }, index) => {
-            const sorted = leaf.getIsSorted();
-            return (
-              <th
-                key={column.id}
-                scope="col"
-                className={cn(
-                  "sticky top-0 z-20 max-w-[18rem] min-w-[9rem] border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left align-bottom font-semibold text-zinc-700",
-                  index === 0 && "left-9 z-30",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={leaf.getToggleSortingHandler()}
-                  className="flex w-full min-w-0 items-center gap-1.5"
-                  title={
-                    column.kind === ColumnKind.Question
-                      ? headerTitle(column.question)
-                      : undefined
-                  }
-                >
-                  {column.kind === ColumnKind.Question && (
-                    <IdentitySwatch seed={column.question.fieldId} />
-                  )}
-                  <span
-                    className={cn(
-                      "min-w-0 truncate",
-                      column.kind === ColumnKind.Question &&
-                        column.question.retired &&
-                        "text-zinc-400 italic",
-                    )}
-                  >
-                    {column.label}
-                  </span>
-                  {column.kind === ColumnKind.Question &&
-                    column.question.wordings.length > 1 && (
-                      <Pencil
-                        aria-label="Wording changed between versions"
-                        className="size-3 shrink-0 text-amber-500"
-                      />
-                    )}
-                  {sorted === "asc" && (
-                    <ArrowUp aria-hidden="true" className="size-3.5 shrink-0" />
-                  )}
-                  {sorted === "desc" && (
-                    <ArrowDown
-                      aria-hidden="true"
-                      className="size-3.5 shrink-0"
-                    />
-                  )}
-                </button>
-              </th>
-            );
-          })}
-        </tr>
-      </thead>
-      <tbody>
+}) => {
+  // Without the Respondent column, the first column's text opens the row.
+  const opener = visibleColumns.some(
+    ({ column }) => column.id === MetaColumnId.Respondent,
+  )
+    ? MetaColumnId.Respondent
+    : visibleColumns[0]?.column.id;
+  return (
+    <Table bleed>
+      <TableHeader>
+        <TableRow>
+          {visibleColumns.map((gridColumn, index) => (
+            <HeaderCell
+              key={gridColumn.column.id}
+              {...gridColumn}
+              first={index === 0}
+            />
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {rows.map(({ original: row }) => {
           const expanded = expandAll || expandedRowIds.has(row.response.id);
-          const isOpen = row.response.id === openResponseId;
+          const respondent = row.cells[MetaColumnId.Respondent]?.text ?? "";
+          const openerText = (opener && row.cells[opener]?.text) || "Open";
           return (
-            <tr
+            <TableRow
               key={row.response.id}
-              onClick={() => onOpenResponse(row.response.id)}
-              className={cn(
-                "cursor-pointer",
-                isOpen ? "bg-blue-50" : "hover:bg-zinc-50",
-              )}
+              aria-selected={row.response.id === openResponseId}
             >
-              <td
-                className={cn(
-                  "sticky left-0 z-10 w-9 border-b border-zinc-100 p-0 align-top",
-                  isOpen ? "bg-blue-50" : "bg-white",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onToggleRow(row.response.id);
-                  }}
-                  aria-label={expanded ? "Collapse row" : "Expand row"}
-                  title={expanded ? "Collapse row" : "Expand row"}
-                  className="flex size-9 items-center justify-center text-zinc-400 hover:text-zinc-900"
-                >
-                  {expanded ? (
-                    <ChevronDown aria-hidden="true" className="size-4" />
-                  ) : (
-                    <ChevronRight aria-hidden="true" className="size-4" />
-                  )}
-                </button>
-              </td>
               {visibleColumns.map(({ column }, index) => {
                 const content = row.cells[column.id];
                 const expandable = isExpandable(content);
+                const first = index === 0;
+                const opensRow = column.id === opener;
+                const body = opensRow ? (
+                  <Link
+                    to={{ search: responseSearch(row.response.id) }}
+                    className={cn(
+                      nameLinkClass,
+                      "block min-w-0",
+                      expanded ? "wrap-break-word" : "truncate",
+                    )}
+                  >
+                    <Highlighted text={openerText} query={query} />
+                  </Link>
+                ) : (
+                  <CellView
+                    content={content}
+                    expanded={expanded}
+                    query={query}
+                  />
+                );
                 return (
-                  <td
+                  <TableCell
                     key={column.id}
                     onClick={
-                      expandable
-                        ? (event) => {
-                            event.stopPropagation();
-                            onToggleRow(row.response.id);
-                          }
+                      expandable && !opensRow
+                        ? () => onToggleRow(row.response.id)
                         : undefined
                     }
                     className={cn(
-                      "max-w-[18rem] min-w-[9rem] border-b border-zinc-100 px-3 py-2 align-top text-zinc-800",
-                      expandable && "cursor-zoom-in",
-                      column.id === MetaColumnId.Respondent &&
-                        "font-medium text-zinc-900",
-                      index === 0 && "sticky left-9 z-10",
-                      index === 0 && (isOpen ? "bg-blue-50" : "bg-white"),
+                      COLUMN_WIDTH,
+                      expanded && "py-3 align-top",
+                      expandable && !opensRow && "cursor-zoom-in",
+                      first && cn(zIndex.raised, STICKY_CELL),
                     )}
                   >
-                    <CellView
-                      content={content}
-                      expanded={expanded}
-                      query={query}
-                    />
-                  </td>
+                    {first ? (
+                      <span className="flex min-w-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => onToggleRow(row.response.id)}
+                          aria-expanded={expanded}
+                          aria-label={
+                            expanded
+                              ? `Collapse row: ${respondent}`
+                              : `Expand row: ${respondent}`
+                          }
+                          title={expanded ? "Collapse row" : "Expand row"}
+                          className="-ml-1.5 grid size-6 shrink-0 place-items-center rounded-sm text-fg-muted focus-ring hover:bg-line hover:text-fg"
+                        >
+                          <ChevronRight
+                            aria-hidden="true"
+                            className={cn(
+                              "size-4 transition-transform duration-fast",
+                              expanded && "rotate-90",
+                            )}
+                          />
+                        </button>
+                        <span className="min-w-0 flex-1">{body}</span>
+                      </span>
+                    ) : (
+                      body
+                    )}
+                  </TableCell>
                 );
               })}
-            </tr>
+            </TableRow>
           );
         })}
-      </tbody>
-    </table>
-    {rows.length === 0 && (
-      <p className="px-3 py-6 text-center text-sm text-zinc-500">
-        No response matches this search.
-      </p>
-    )}
-  </div>
-);
+      </TableBody>
+    </Table>
+  );
+};
 
 export default ResponsesGrid;

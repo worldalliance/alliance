@@ -3,16 +3,14 @@ import type {
   MmsMessageDto,
   MmsThreadEventKind,
 } from "@alliance/shared/client/types.gen";
-import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { format, isThisYear } from "date-fns";
 import { type MouseEvent, useEffect, useLayoutEffect, useRef } from "react";
 import { getApiUrl } from "../../lib/config";
+import { formatDateTime } from "../../lib/formatDate";
 import { deliveryStatus } from "../../lib/memberTexts";
 import { type TextPage, useOlderTexts } from "../../lib/useOlderTexts";
-
-/** Fixed, so the sections below don't move when the thread arrives. */
-export const THREAD_PANE = "h-[28rem]";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { cn } from "../../ui/cn";
+import { EmptyState } from "../../ui/EmptyState";
 
 const NEAR_BOTTOM_PX = 40;
 
@@ -23,6 +21,7 @@ export default function TextHistory({
   sentId,
   conflictsShown,
   emptyText,
+  className,
 }: {
   thread: TextPage;
   fetchOlder: (before: number) => Promise<TextPage>;
@@ -32,8 +31,12 @@ export default function TextHistory({
    * end so the texts it warns about are in view. */
   conflictsShown: number;
   emptyText: string;
+  /** The pane's height: fixed in a column of sections, the rest of a pane
+   * that fills. */
+  className?: string;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const latest = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const older = useOlderTexts({ newest: thread, fetchOlder });
   const { messages } = older;
@@ -85,7 +88,18 @@ export default function TextHistory({
     // load doesn't bubble, so the pane listens in the capture phase for its
     // images. WebKit has no scroll anchoring to absorb one loading above.
     element.addEventListener("load", keepPlace, true);
-    return () => element.removeEventListener("load", keepPlace, true);
+    // The pane shrinking as the composer grows, or a text resizing as an
+    // image fails or a font loads, would otherwise move the reader's place.
+    const resized =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(keepPlace);
+    resized?.observe(element);
+    if (latest.current) resized?.observe(latest.current);
+    return () => {
+      element.removeEventListener("load", keepPlace, true);
+      resized?.disconnect();
+    };
   }, []);
 
   return (
@@ -101,31 +115,37 @@ export default function TextHistory({
           NEAR_BOTTOM_PX;
         place.current = firstVisible(element);
       }}
-      className={cn(THREAD_PANE, "relative overflow-y-auto space-y-2 px-1")}
+      className={cn(
+        "relative flex flex-col gap-3 overflow-y-auto px-card py-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent",
+        className,
+      )}
     >
       {older.hasOlder && (
-        <div className="flex items-center justify-center gap-2 py-1">
+        <div className="flex shrink-0 flex-col items-center gap-1">
           <Button
             size="small"
-            color={ButtonColor.White}
+            variant={ButtonVariant.Default}
             onClick={showOlder}
-            aria-disabled={older.loading}
+            busy={older.loading}
           >
-            {older.loading ? "Loading older texts…" : "Show older texts"}
+            Show older texts
           </Button>
-          <p role="status" className="text-xs text-red-700">
+          <p role="status" className="min-h-4 text-caption text-danger">
             {older.failed && "Couldn't load older texts."}
           </p>
         </div>
       )}
-      {messages.length === 0 && (
-        <p className="text-sm text-zinc-500">{emptyText}</p>
-      )}
+      {messages.length === 0 && <EmptyState title={emptyText} />}
       {older.history.map((message) => (
         <Message key={message.id} message={message} contactName={contactName} />
       ))}
       {/* Older texts load outside the log, so loading them isn't read out. */}
-      <div role="log" aria-label="Latest texts" className="space-y-2">
+      <div
+        ref={latest}
+        role="log"
+        aria-label="Latest texts"
+        className="flex shrink-0 flex-col gap-3"
+      >
         {older.latest.map((message) => (
           <Message
             key={message.id}
@@ -160,6 +180,21 @@ const firstVisible = (element: HTMLElement): Place | null => {
     : null;
 };
 
+enum Sender {
+  Contact = "contact",
+  Staff = "staff",
+  Automated = "automated",
+}
+
+/** An automated text is outlined, so it differs from a staff text by more
+ * than its colour. */
+const BUBBLE: Record<Sender, string> = {
+  [Sender.Contact]: "rounded-bl-sm border border-line bg-surface-2 text-fg",
+  [Sender.Staff]: "rounded-br-sm bg-accent text-accent-fg",
+  [Sender.Automated]:
+    "rounded-br-sm border border-dashed border-line-strong bg-surface text-fg",
+};
+
 function Message({
   message,
   contactName,
@@ -167,46 +202,51 @@ function Message({
   message: MmsMessageDto;
   contactName: string;
 }) {
-  const { outbound, author, status } = side(message, contactName);
+  const { sender, author, status } = side(message, contactName);
+  const outbound = sender !== Sender.Contact;
   return (
     <>
       <div
         data-text-id={message.id}
-        className={cn("flex", outbound ? "justify-end" : "justify-start")}
+        className={cn(
+          "flex shrink-0 flex-col gap-1",
+          outbound ? "items-end" : "items-start",
+        )}
       >
-        <div className="max-w-[80%]">
-          <div
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
-              outbound ? "bg-zinc-800 text-white" : "bg-zinc-100 text-zinc-900",
-            )}
-          >
-            {message.body}
-            {message.media.map((media) => (
-              <Attachment key={media.id} media={media} author={author} />
-            ))}
-          </div>
-          <p
-            className={cn(
-              "mt-0.5 text-xs text-zinc-600",
-              outbound && "text-right",
-            )}
-          >
-            {author} · {sentAt(new Date(message.createdAt))}
-            {status && (
-              <span className={cn(status.failed && "text-red-700 font-medium")}>
-                {" · "}
-                {status.label}
-                {status.failed && status.reason && `: ${status.reason}`}
-              </span>
-            )}
-          </p>
+        <div
+          className={cn(
+            "flex max-w-3/4 flex-col items-start gap-1 rounded-card px-3 py-2 wrap-break-word whitespace-pre-wrap",
+            BUBBLE[sender],
+          )}
+        >
+          {message.body}
+          {message.media.map((media) => (
+            <Attachment key={media.id} media={media} author={author} />
+          ))}
         </div>
+        <p
+          className={cn(
+            "max-w-full text-caption text-fg-muted",
+            outbound && "text-right",
+          )}
+        >
+          {author} · {formatDateTime(message.createdAt)}
+          {status && (
+            <span className={cn(status.failed && "font-medium text-danger")}>
+              {" · "}
+              {status.label}
+              {status.failed && status.reason && `: ${status.reason}`}
+            </span>
+          )}
+        </p>
       </div>
       {message.events.map((event) => (
-        <p key={event.id} className="text-center text-xs text-zinc-600">
+        <p
+          key={event.id}
+          className="shrink-0 text-center text-caption text-fg-muted"
+        >
           {EVENT_LABEL[event.kind]} by {event.markedByName ?? "Deleted user"} ·{" "}
-          {sentAt(new Date(event.createdAt))}
+          {formatDateTime(event.createdAt)}
         </p>
       ))}
     </>
@@ -217,12 +257,12 @@ function side(message: MmsMessageDto, contactName: string) {
   switch (message.direction) {
     case "outbound":
       return {
-        outbound: true,
+        sender: message.sentByStaff ? Sender.Staff : Sender.Automated,
         author: senderLabel(message),
         status: deliveryStatus(message),
       };
     case "inbound":
-      return { outbound: false, author: contactName, status: null };
+      return { sender: Sender.Contact, author: contactName, status: null };
     default:
       throw new Error(
         `unknown direction: ${message.direction satisfies never}`,
@@ -235,18 +275,15 @@ const EVENT_LABEL: Record<MmsThreadEventKind, string> = {
   marked_needs_reply: "Marked needs reply",
 };
 
-const sentAt = (date: Date): string =>
-  format(date, isThisYear(date) ? "MMM d, h:mm a" : "MMM d, yyyy, h:mm a");
-
 const senderLabel = (message: MmsMessageDto): string =>
   message.sentByName ?? (message.sentByStaff ? "Deleted user" : "Automated");
 
 function Attachment({ media, author }: { media: MmsMediaDto; author: string }) {
   switch (media.status) {
     case "copying":
-      return <p className="mt-1 text-xs italic">Attachment still loading…</p>;
+      return <p className="text-caption italic">Attachment still loading…</p>;
     case "unavailable":
-      return <p className="mt-1 text-xs italic">Attachment unavailable</p>;
+      return <p className="text-caption italic">Attachment unavailable</p>;
     case "ready":
       break;
     default:
@@ -255,17 +292,22 @@ function Attachment({ media, author }: { media: MmsMediaDto; author: string }) {
   const url = `${getApiUrl()}/mms-threads/media/${media.id}`;
   if (media.inline) {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className="block mt-1">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="block rounded-md focus-ring"
+      >
         <img
           src={url}
           alt={`Image texted by ${author}`}
-          className="max-h-64 rounded"
+          className="max-h-64 rounded-md"
         />
       </a>
     );
   }
   return (
-    <a href={url} className="block mt-1 underline">
+    <a href={url} className="block rounded-sm underline focus-ring">
       Download attachment ({media.contentType})
     </a>
   );

@@ -7,9 +7,6 @@ import {
 import { holdChunkReloads } from "@alliance/sharedweb/lib/lazyOrReload";
 import { queryClient } from "@alliance/sharedweb/lib/queryClient";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   isRouteErrorResponse,
@@ -20,6 +17,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
+import { FullScreenError } from "./ConfigErrorScreen";
 import {
   boundaryNeedsStaffIdentity,
   useAnalytics,
@@ -27,6 +25,9 @@ import {
 } from "./lib/analytics";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import { getSiteUrl } from "./lib/config";
+import { SiteOriginLinkProvider } from "./ui/SiteAppProvider";
+import Spinner from "./ui/Spinner";
+import { ToastProvider } from "./ui/ToastProvider";
 
 registerErrorStatus(client);
 
@@ -61,40 +62,23 @@ function StaffIdentity() {
 }
 
 function ErrorDetails({ error }: { error: unknown }) {
-  if (!import.meta.env.PROD) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        {error instanceof Error && (
-          <p className="text-red-500">{error.message}</p>
-        )}
-        {isRouteErrorResponse(error) && (
-          <p>
-            {error.status} {error.statusText}
-          </p>
-        )}
-      </div>
-    );
-  }
   if (isRouteErrorResponse(error)) {
     return (
-      <>
-        <h1>
-          {error.status} {error.statusText}
-        </h1>
-        <p>{error.data}</p>
-      </>
+      <FullScreenError title={`${error.status} ${error.statusText}`}>
+        {typeof error.data === "string" && (
+          <p className="text-fg-muted">{error.data}</p>
+        )}
+      </FullScreenError>
     );
-  } else if (error instanceof Error) {
-    return (
-      <div className="p-2">
-        <h3>Error</h3>
-        <p>{error.message}</p>
-        <pre className="text-red-500">{error.stack}</pre>
-      </div>
-    );
-  } else {
-    return <h1>Unknown Error</h1>;
   }
+  return (
+    <FullScreenError
+      title="Something went wrong"
+      detail={error instanceof Error ? error.stack : undefined}
+    >
+      {error instanceof Error && <p className="text-danger">{error.message}</p>}
+    </FullScreenError>
+  );
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {

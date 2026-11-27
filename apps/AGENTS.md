@@ -20,3 +20,7 @@ export function parseValue(input: RawValueDto): ParsedValue {
 ## Web-mobile feature parity
 
 Any functionality added to the frontend should also be added to the mobile version (and vice versa). The UI/UX may be different; it should fit each platform separately.
+
+## Admin design guide
+
+Redesigning a place in `apps/admin`, writing a new admin page, or changing `apps/admin/src/ui`, its templates, the shell or the admin's tokens → read `apps/admin/DESIGN.md` first. A fix to a page not yet redesigned (listed in `apps/admin/eslint/legacy-files.txt`) follows that page's existing code.

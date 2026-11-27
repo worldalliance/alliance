@@ -300,33 +300,29 @@ export function useSuiteLaunchData(params: {
   const loadErrors = [
     ...actionResults.flatMap((result, index) =>
       result.isError
-        ? [`Failed to load action ${suite.actions[index].name}.`]
+        ? [`Couldn't load the task ${suite.actions[index].name}.`]
         : [],
     ),
     ...suite.actions.flatMap((action, index) =>
       formResultOf(index).isError
-        ? [`Failed to load the task form for ${action.name}.`]
+        ? [`Couldn't load the task form for ${action.name}.`]
         : [],
     ),
     ...suite.actions.flatMap((action, index) =>
       cohortResultOf(index).isError
-        ? [`Failed to evaluate the cohort for ${action.name}.`]
+        ? [`Couldn't evaluate the cohort for ${action.name}.`]
         : [],
     ),
-    ...(actionList.isError
-      ? ["Failed to load the actions' variant forms."]
-      : []),
+    ...(actionList.isError ? ["Couldn't load the tasks' variant forms."] : []),
     ...variantResults.flatMap((result) =>
-      result.isError ? ["Failed to load a variant form."] : [],
+      result.isError ? ["Couldn't load a variant form."] : [],
     ),
     ...(variantListResults.some((result) => result.isError)
-      ? ["Failed to load the actions' variants."]
+      ? ["Couldn't load the tasks' variants."]
       : []),
-    ...(users.isError ? ["Failed to load members' contract status."] : []),
-    ...(awayRanges.isError ? ["Failed to load members' away dates."] : []),
-    ...(spellchecker.isError
-      ? ["Failed to load the spelling dictionary."]
-      : []),
+    ...(users.isError ? ["Couldn't load members' contract status."] : []),
+    ...(awayRanges.isError ? ["Couldn't load members' away dates."] : []),
+    ...(spellchecker.isError ? ["Couldn't load the spelling dictionary."] : []),
   ];
 
   return {

@@ -3,7 +3,6 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -13,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "bun:test";
 import type { ReactNode } from "react";
+import { ToastProvider } from "../ui/ToastProvider";
 import { useActionSuiteAdmin } from "./useActionSuiteAdmin";
 
 const suite = (titles: string[]): ActionSuiteDto => ({

@@ -1,12 +1,14 @@
-import { withCount } from "@alliance/common/plural";
 import { useResponseSnapshotMigrationsAdmin } from "@alliance/shared/lib/useResponseSnapshotMigrationAdmin";
-import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { GitCompare } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
-import { Link } from "react-router";
+import { formatDate } from "../../lib/formatDate";
+import { countOf } from "../../lib/formatNumber";
 import { stableStringify } from "../../lib/schemaDiff";
+import Badge from "../../ui/Badge";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { cn } from "../../ui/cn";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
 import { IdentitySwatch } from "../IdentitySwatch";
 import type { SnapshotFieldSet } from "./columns";
 import {
@@ -19,41 +21,31 @@ import {
 export const snapshotSeed = (snapshotId: number): string =>
   `snapshot-${snapshotId}`;
 
-const formatDate = (value: string): string =>
-  new Date(value).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
 const ChangeList: React.FC<{ changes: SnapshotChanges }> = ({ changes }) => {
   if (!hasChanges(changes)) {
     return (
-      <p className="text-xs text-zinc-400 italic">
+      <p className="text-caption text-fg-muted">
         No question changed in this version.
       </p>
     );
   }
+  const lines = [
+    ...changes.added.map((label) => ({ verb: "Added", text: label })),
+    ...changes.removed.map((label) => ({ verb: "Removed", text: label })),
+    ...changes.reworded.map(({ from, to }) => ({
+      verb: "Reworded",
+      text: `"${from}" to "${to}"`,
+    })),
+    ...changes.optionsChanged.map((label) => ({
+      verb: "Options changed on",
+      text: label,
+    })),
+  ];
   return (
-    <ul className="space-y-0.5 text-xs">
-      {changes.added.map((label) => (
-        <li key={`added-${label}`} className="text-emerald-700">
-          Added {label}
-        </li>
-      ))}
-      {changes.removed.map((label) => (
-        <li key={`removed-${label}`} className="text-red-700">
-          Removed {label}
-        </li>
-      ))}
-      {changes.reworded.map(({ from, to }) => (
-        <li key={`reworded-${from}-${to}`} className="text-amber-700">
-          Reworded &quot;{from}&quot; to &quot;{to}&quot;
-        </li>
-      ))}
-      {changes.optionsChanged.map((label) => (
-        <li key={`options-${label}`} className="text-sky-700">
-          Options changed on {label}
+    <ul className="flex flex-col gap-0.5 text-caption">
+      {lines.map(({ verb, text }) => (
+        <li key={`${verb}-${text}`}>
+          <span className="font-semibold">{verb}</span> {text}
         </li>
       ))}
     </ul>
@@ -68,7 +60,8 @@ export type SnapshotNavigatorProps = {
   formIds: readonly number[];
   selectedSnapshotId: number | null;
   onSelectVersion: (snapshotId: number | null) => void;
-  snapshotsHref: string | null;
+  /** Goes to the form's Versions tab; null where there is no form to go to. */
+  onReassign: (() => void) | null;
 };
 
 const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
@@ -78,7 +71,7 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
   formIds,
   selectedSnapshotId,
   onSelectVersion,
-  snapshotsHref,
+  onReassign,
 }) => {
   const [compared, setCompared] = useState<number[]>([]);
 
@@ -100,12 +93,11 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
   }
 
   const toggleCompared = (snapshotId: number) => {
-    setCompared((current) => {
-      if (current.includes(snapshotId)) {
-        return current.filter((id) => id !== snapshotId);
-      }
-      return [...current, snapshotId].slice(-2);
-    });
+    setCompared((current) =>
+      current.includes(snapshotId)
+        ? current.filter((id) => id !== snapshotId)
+        : [...current, snapshotId].slice(-2),
+    );
   };
 
   const diff = useMemo(() => {
@@ -124,31 +116,36 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
   }, [compared, fields]);
 
   return (
-    <div className="space-y-4 p-5">
+    <div className="flex flex-col gap-4 p-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-zinc-500">
-          {withCount(entries.length, "version")} in these responses. Pick two to
-          compare.
+        <p className="text-fg-muted">
+          {countOf(entries.length, "version")} in these responses. Pick one to
+          filter the table, or two to compare.
         </p>
-        {snapshotsHref && (
-          <Link
-            to={snapshotsHref}
-            className="text-sm text-blue-600 hover:underline"
+        {onReassign && (
+          <Button
+            variant={ButtonVariant.Default}
+            size="small"
+            onClick={onReassign}
           >
             Reassign snapshots
-          </Link>
+          </Button>
         )}
       </div>
 
       {metaFailed && (
-        <p className="text-sm text-amber-700">
-          Could not load version dates. Everything else below still applies.
-        </p>
+        <Banner tone={BannerTone.Warning} inline>
+          Couldn't load when each version was first saved. Everything else here
+          still applies.
+        </Banner>
       )}
 
       {diff && (
-        <div className="overflow-hidden rounded-lg border border-zinc-200">
-          <p className="border-b border-zinc-100 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-600">
+        <section
+          aria-label={`v${diff.older} compared with v${diff.newer}`}
+          className="overflow-hidden rounded-card border border-line"
+        >
+          <p className="border-b border-line bg-surface-2 px-3 py-2 text-caption font-medium">
             v{diff.older} → v{diff.newer}
           </p>
           <div className="max-h-96 overflow-auto text-xs">
@@ -161,53 +158,47 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
               extraLinesSurroundingDiff={2}
             />
           </div>
-        </div>
+        </section>
       )}
 
-      <ul className="space-y-2">
+      <ul className="flex flex-col gap-2">
         {entries.map((entry) => {
           const createdAt = snapshotCreatedAt.get(entry.snapshotId);
-          const isSelected = selectedSnapshotId === entry.snapshotId;
+          const selected = selectedSnapshotId === entry.snapshotId;
+          const isCompared = compared.includes(entry.snapshotId);
           return (
             <li
               key={entry.snapshotId}
               className={cn(
-                "rounded-lg border p-3",
-                isSelected
-                  ? "border-blue-400 bg-blue-50"
-                  : "border-zinc-200 bg-white",
+                "rounded-card border bg-surface p-3",
+                selected ? "border-accent bg-accent-soft" : "border-line",
               )}
             >
               <div className="flex items-start justify-between gap-3">
                 <button
                   type="button"
+                  aria-pressed={selected}
                   onClick={() =>
-                    onSelectVersion(isSelected ? null : entry.snapshotId)
+                    onSelectVersion(selected ? null : entry.snapshotId)
                   }
-                  className="min-w-0 flex-1 text-left"
+                  className="flex min-w-0 flex-1 flex-col rounded-sm text-left focus-ring"
                 >
                   <span className="flex items-center gap-2">
                     <IdentitySwatch seed={snapshotSeed(entry.snapshotId)} />
-                    <span className="font-semibold text-zinc-900">
-                      v{entry.snapshotId}
-                    </span>
-                    {entry.isCurrent && (
-                      <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
-                        Current
-                      </span>
-                    )}
+                    <span className="font-semibold">v{entry.snapshotId}</span>
+                    {entry.isCurrent && <Badge>Current</Badge>}
                   </span>
-                  <span className="mt-0.5 block text-xs text-zinc-500">
+                  <span className="mt-0.5 text-caption text-fg-muted">
                     {createdAt
-                      ? `Created ${formatDate(createdAt)}`
-                      : metaPending
-                        ? "Loading creation date…"
-                        : "Creation date unavailable"}
+                      ? `First saved ${formatDate(createdAt)}`
+                      : metaPending && !metaFailed
+                        ? "Loading when it was first saved…"
+                        : "First saved date unavailable"}
                   </span>
-                  <span className="mt-0.5 block text-xs text-zinc-600">
+                  <span className="mt-0.5 text-caption text-fg-muted">
                     {entry.responseCount === 0
                       ? "No responses"
-                      : `${withCount(entry.responseCount, "response")}${
+                      : `${countOf(entry.responseCount, "response")}${
                           entry.firstResponseAt && entry.lastResponseAt
                             ? ` · ${formatDate(entry.firstResponseAt)} – ${formatDate(entry.lastResponseAt)}`
                             : ""
@@ -215,21 +206,19 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
                   </span>
                 </button>
                 <Button
+                  variant={ButtonVariant.Default}
                   size="small"
-                  color={
-                    compared.includes(entry.snapshotId)
-                      ? ButtonColor.Black
-                      : ButtonColor.White
-                  }
+                  aria-pressed={isCompared}
+                  className="aria-pressed:bg-surface-2"
                   onClick={() => toggleCompared(entry.snapshotId)}
                   aria-label={`Compare v${entry.snapshotId}`}
-                  title={`Compare v${entry.snapshotId}`}
                 >
                   <GitCompare aria-hidden="true" className="size-4" />
+                  Compare
                 </Button>
               </div>
               {entry.changes && (
-                <div className="mt-2 border-t border-zinc-100 pt-2">
+                <div className="mt-2 border-t border-line pt-2">
                   <ChangeList changes={entry.changes} />
                 </div>
               )}

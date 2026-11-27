@@ -178,6 +178,14 @@ describe("prepareJsonApply", () => {
     expect(message).toMatch(/^Invalid JSON: /);
   });
 
+  it("says what an element needs when its type and kind match none", async () => {
+    const [message] = await errors({
+      scope: topLevel(0),
+      value: { kind: "radio", id: 1 },
+    });
+    expect(message).toMatch(/^This isn't an element the builder knows\./);
+  });
+
   it("rejects JSON the schema rejects, naming the path", async () => {
     expect(
       await errors({ scope: topLevel(0), value: { ...text("a"), label: 3 } }),

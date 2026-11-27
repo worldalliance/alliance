@@ -13,8 +13,9 @@ import {
   useAdminTaskFormActions,
 } from "@alliance/shared/lib/useTaskForm";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useState } from "react";
+import { useToast } from "../ui/ToastProvider";
+import { SAVE_FAILED_FALLBACK } from "../ui/templates/Form";
 import {
   customValidatorIds,
   mapCustomValidatorIds,
@@ -39,6 +40,9 @@ export type DisplayOnlySave = (params: {
   schema: FormSchema;
   expectedSnapshotId: number | null;
 }) => Promise<DisplayOnlySaveResult>;
+
+const SAVED_AGAIN = "Someone saved again. Review their latest changes.";
+const COPY_FAILED = "Couldn't copy your version.";
 
 export function useFormSave({
   displayOnlySave,
@@ -82,7 +86,7 @@ export function useFormSave({
   } = saved;
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const { success: showSuccessToast, error: showErrorToast } = useToast();
+  const { success: showSuccessToast, confirm } = useToast();
   const { createForm } = useCreateFormAdmin();
   const { fetchLatest, updateForm } = useAdminTaskFormActions();
   const fetchTheirs = useCallback(
@@ -142,7 +146,7 @@ export function useFormSave({
 
     try {
       if (sourceFormsLoading) {
-        showErrorToast(
+        setSaveError(
           "Still loading the questions of forms your formulas read. Try again in a moment.",
         );
         return;
@@ -177,11 +181,10 @@ export function useFormSave({
             theirs: result.error.theirs,
             theirsSnapshotId: result.error.theirsSnapshotId,
           });
-          showErrorToast("This update was changed by someone else");
           return;
         }
         markSaved(schemaForSave, result.value.snapshotId);
-        showSuccessToast("Saved successfully");
+        showSuccessToast("Content saved");
         return;
       }
 
@@ -209,14 +212,11 @@ export function useFormSave({
               "This form was changed by someone else. Reload to continue.",
             );
           }
-          showErrorToast("This form was changed by someone else");
           return;
         }
 
         if (!result.ok) {
-          const fallbackMessage = "Could not save form";
-          setSaveError(fallbackMessage);
-          showErrorToast(fallbackMessage);
+          setSaveError(SAVE_FAILED_FALLBACK);
           return;
         }
         savedForm = result.value;
@@ -230,13 +230,12 @@ export function useFormSave({
       const { id, formSnapshotId } = savedForm;
       markSaved(schemaForSave, formSnapshotId);
       navigateToSaved(id, () => setFormId(id));
-      showSuccessToast("Form saved successfully");
+      showSuccessToast("Form saved");
     } catch (error) {
       console.error("Failed to save form:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Could not save form";
-      setSaveError(errorMessage);
-      showErrorToast(errorMessage);
+      setSaveError(
+        error instanceof Error ? error.message : SAVE_FAILED_FALLBACK,
+      );
     } finally {
       setIsSaving(false);
     }
@@ -258,14 +257,16 @@ export function useFormSave({
     schema,
     setConflict,
     setFormId,
-    showErrorToast,
     showSuccessToast,
     sourceFormsLoading,
     updateForm,
     validation,
   ]);
 
-  const closeConflict = useCallback(() => setConflict(null), [setConflict]);
+  const closeConflict = useCallback(() => {
+    setSaveError(null);
+    setConflict(null);
+  }, [setConflict]);
 
   // Overwrite only if their snapshot is still current.
   const handleKeepMine = useCallback(async () => {
@@ -285,7 +286,7 @@ export function useFormSave({
             theirs: result.error.theirs,
             theirsSnapshotId: result.error.theirsSnapshotId,
           });
-          showErrorToast("Someone saved again — review the latest changes");
+          setSaveError(SAVED_AGAIN);
           return;
         }
         amendSchema(conflict.mine);
@@ -293,10 +294,9 @@ export function useFormSave({
         setConflict(null);
         showSuccessToast("Saved your version");
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Could not save";
-        setSaveError(message);
-        showErrorToast(message);
+        setSaveError(
+          error instanceof Error ? error.message : SAVE_FAILED_FALLBACK,
+        );
       } finally {
         setIsSaving(false);
       }
@@ -322,7 +322,7 @@ export function useFormSave({
             ...theirs.value,
           });
         }
-        showErrorToast("Someone saved again — review the latest changes");
+        setSaveError(SAVED_AGAIN);
         return;
       }
       if (result.ok) {
@@ -331,14 +331,12 @@ export function useFormSave({
         setConflict(null);
         showSuccessToast("Saved your version");
       } else {
-        setSaveError("Could not save form");
-        showErrorToast("Could not save form");
+        setSaveError(SAVE_FAILED_FALLBACK);
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to save form";
-      setSaveError(message);
-      showErrorToast(message);
+      setSaveError(
+        error instanceof Error ? error.message : SAVE_FAILED_FALLBACK,
+      );
     } finally {
       setIsSaving(false);
     }
@@ -351,24 +349,25 @@ export function useFormSave({
     amendSchema,
     markSaved,
     setConflict,
-    showErrorToast,
     showSuccessToast,
   ]);
 
-  const handleTakeTheirs = useCallback(() => {
+  const handleTakeTheirs = useCallback(async () => {
     if (!conflict) return;
-    if (
-      !window.confirm(
-        "Discard your changes and load their current version? Copy your version first if you want to keep it.",
-      )
-    ) {
-      return;
-    }
+    const discard = await confirm({
+      title: "Discard your changes?",
+      message:
+        "Their current version loads in place of yours. Copy your version first if you want to keep it.",
+      confirmLabel: "Discard my changes",
+      destructive: true,
+    });
+    if (!discard) return;
+    setSaveError(null);
     loadSchema(conflict.theirs);
     reloadEditors();
     markSaved(conflict.theirs, conflict.theirsSnapshotId);
     setConflict(null);
-  }, [conflict, loadSchema, markSaved, reloadEditors, setConflict]);
+  }, [confirm, conflict, loadSchema, markSaved, reloadEditors, setConflict]);
 
   const handleMerge = useCallback(() => {
     if (!conflict) return;
@@ -379,21 +378,23 @@ export function useFormSave({
       validation,
     });
     if (!result.ok) {
-      showErrorToast("Can't auto-merge — there are conflicting edits");
+      setSaveError(
+        "Can't merge automatically: you both changed the same things.",
+      );
       return;
     }
     loadSchema(result.value);
     reloadEditors();
     setBaseline(conflict.theirs, conflict.theirsSnapshotId);
+    setSaveError(null);
     setConflict(null);
-    showSuccessToast("Merged their changes with yours — review and save");
+    showSuccessToast("Merged their changes with yours. Review and save.");
   }, [
     conflict,
     loadSchema,
     reloadEditors,
     setBaseline,
     setConflict,
-    showErrorToast,
     showSuccessToast,
     validation,
   ]);
@@ -401,11 +402,12 @@ export function useFormSave({
   const handleCopyMine = useCallback(async () => {
     if (!conflict) return;
     if (await copyToClipboard(JSON.stringify(conflict.mine, null, 2))) {
+      setSaveError((error) => (error === COPY_FAILED ? null : error));
       showSuccessToast("Copied your version to the clipboard");
     } else {
-      showErrorToast("Could not copy your version to the clipboard");
+      setSaveError(COPY_FAILED);
     }
-  }, [conflict, showErrorToast, showSuccessToast]);
+  }, [conflict, showSuccessToast]);
 
   return {
     saveForm,

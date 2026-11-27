@@ -7,7 +7,7 @@ const PREVIEW_AS_PARAM = "previewAs";
 
 /** The form's editor, opened with the page or element `id` selected. */
 export const formEditorPath = (formId: number, id: string) =>
-  `/forms/${formId}?${new URLSearchParams({ [SELECT_PARAM]: id })}`;
+  `/tasks/forms/${formId}?${new URLSearchParams({ [SELECT_PARAM]: id })}`;
 
 export const formPreviewPath = ({
   formId,
@@ -16,7 +16,7 @@ export const formPreviewPath = ({
   formId: number;
   userId: number;
 }) =>
-  `/forms/${formId}?${new URLSearchParams({ [PREVIEW_AS_PARAM]: String(userId) })}`;
+  `/tasks/forms/${formId}?${new URLSearchParams({ [PREVIEW_AS_PARAM]: String(userId) })}`;
 
 /**
  * `param`'s value when the editor mounted. The parameter leaves the URL at

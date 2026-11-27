@@ -1,11 +1,8 @@
 import { useFormWithdrawalsAdmin } from "@alliance/shared/lib/useFormWithdrawalsAdmin";
 import React, { useMemo } from "react";
 import { useParams } from "react-router";
-import FormResponsesView, {
-  REFRESH_ERROR,
-} from "../components/FormResponsesView";
+import FormResponsesView from "../components/FormResponsesView";
 import { useFormResponsesAdmin } from "../lib/useFormResponsesAdmin";
-import { useRefusalToast } from "../lib/useRefusalToast";
 
 const FormResponses: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
@@ -29,7 +26,6 @@ const FormResponses: React.FC = () => {
     error,
     refresh,
   } = useFormResponsesAdmin(isFormIdValid ? numericFormId : undefined);
-  const refusalToast = useRefusalToast();
 
   // Memoised for its identity, not its cost: `FormResponsesView` keys a memo
   // and an effect off this array, and a fresh literal each render re-runs both.
@@ -43,16 +39,13 @@ const FormResponses: React.FC = () => {
 
   return (
     <FormResponsesView
-      title={form?.title ?? "Form Responses"}
+      paramNamespace="resp"
+      title={form?.title ?? "Form responses"}
       form={form}
       responses={responses}
       loading={isFormIdValid && loading}
       error={isFormIdValid ? error : "Invalid form id."}
-      onRefresh={() =>
-        refresh.mutate(undefined, {
-          onError: (e) => refusalToast(e, REFRESH_ERROR),
-        })
-      }
+      refresh={refresh}
       withdrawnUserMap={withdrawnUserMap}
       sidsToUserMap={sidsToUserMap}
       referralsError={referralsError}

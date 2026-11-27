@@ -11,7 +11,7 @@ const FormulaDiagnostics: React.FC<{ problem: FormulaProblemDto }> = ({
       if (problem.message === undefined) {
         throw new Error("a name problem without its message");
       }
-      return <p className="text-sm text-red-700">{problem.message}</p>;
+      return <p className="text-caption text-danger">{problem.message}</p>;
     case "named":
     case "dependent": {
       const { text, diagnostics } = problem;

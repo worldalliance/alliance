@@ -1,10 +1,4 @@
 import type { ActionCategory } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alliance/sharedweb/ui/Tooltip";
 import {
   Cpu,
   HandCoins,
@@ -13,6 +7,8 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { cn } from "../ui/cn";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/Tooltip";
 
 const ACTION_CATEGORY_DISPLAY: Record<
   ActionCategory,
@@ -40,7 +36,7 @@ export function ActionCategoryIcons({
 }) {
   if (categories.length === 0) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-zinc-500">
+    <span className="inline-flex items-center gap-1 text-fg-muted">
       {sortCategories(categories).map((category) => {
         const { label, Icon } = ACTION_CATEGORY_DISPLAY[category];
         return (
@@ -92,10 +88,10 @@ export function ActionCategoryPicker({
                 />
               }
               className={cn(
-                "rounded border p-1.5 disabled:opacity-50",
+                "rounded-sm border p-1.5 focus-ring disabled:opacity-50",
                 selected
-                  ? "border-zinc-400 bg-zinc-100 text-zinc-900"
-                  : "border-gray-2 bg-white text-zinc-300 hover:text-zinc-500",
+                  ? "border-line-strong bg-surface-2 text-fg"
+                  : "border-line bg-surface text-fg-muted hover:text-fg",
               )}
             >
               <Icon size={14} />

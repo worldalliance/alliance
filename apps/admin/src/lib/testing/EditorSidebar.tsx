@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import {
   SidebarSection,
   SidebarSections,
-} from "../../components/form-canvas/sidebarSections";
+} from "../../pages/forms/builder/inspector/sidebarSections";
 
 const CONTENT = [SidebarSection.Content];
 

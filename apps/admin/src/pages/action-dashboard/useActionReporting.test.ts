@@ -226,6 +226,24 @@ describe("useActionReporting", () => {
     );
   });
 
+  it("reads a stats 404 as not counted yet, not as a failed load", async () => {
+    api.alsoServing({
+      "GET /analytics/action-stats/:actionId": () =>
+        Response.json({}, { status: 404 }),
+    });
+
+    const view = renderHook(
+      () => useActionReporting(started, 3),
+      queryWrapper(),
+    );
+
+    await waitFor(() =>
+      expect(view.result.current.actionStatsNotCounted).toBe(true),
+    );
+    expect(view.result.current.actionStats).toBeNull();
+    expect(view.result.current.failedLoads).toEqual([]);
+  });
+
   it.each([
     {
       route: "GET /analytics/action-stats/:actionId",

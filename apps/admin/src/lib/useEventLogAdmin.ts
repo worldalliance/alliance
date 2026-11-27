@@ -1,15 +1,15 @@
 import { eventLogFindAllAdmin } from "@alliance/shared/client";
 import type { EventType } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 const EVENTS_PER_PAGE = 50;
 
-export function useEventLogAdmin(eventType: EventType | "") {
-  return usePaginatedQuery({
-    queryKey: (page) =>
-      queryKeys.eventLogAdmin(page, EVENTS_PER_PAGE, eventType),
-    queryFn: (page) =>
+/** One page of the event log, keeping the previous page's rows on screen while it loads. */
+export function useEventLogAdmin(page: number, eventType: EventType | "") {
+  return useQuery({
+    queryKey: queryKeys.eventLogAdmin(page, EVENTS_PER_PAGE, eventType),
+    queryFn: () =>
       eventLogFindAllAdmin({
         query: {
           page,
@@ -18,5 +18,6 @@ export function useEventLogAdmin(eventType: EventType | "") {
         },
         throwOnError: true,
       }).then((response) => response.data),
+    placeholderData: keepPreviousData,
   });
 }

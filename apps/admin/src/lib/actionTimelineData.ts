@@ -7,6 +7,7 @@ import {
   ReminderGroupDto,
   ReminderGroupTimingMode,
 } from "@alliance/shared/client";
+import { TZDate } from "@date-fns/tz";
 import {
   addWeeks,
   isTuesday,
@@ -15,6 +16,7 @@ import {
   startOfDay,
 } from "date-fns";
 import { millisecondsInDay, millisecondsInSecond } from "date-fns/constants";
+import { LAUNCH_TIME_ZONE } from "./launchTimeZone";
 
 export type TimelineAction = Pick<
   ActionDto,
@@ -244,7 +246,10 @@ export const buildTimelineData = ({
       const phaseStartDate = new Date(event.date);
       const phaseEndDate = nextEvent
         ? new Date(nextEvent.date)
-        : new Date(Date.now() + milliseconds({ days: 7 }));
+        : new Date(
+            Math.max(Date.now(), phaseStartDate.getTime()) +
+              milliseconds({ days: 7 }),
+          );
 
       const duration = phaseEndDate.getTime() - phaseStartDate.getTime();
 
@@ -342,8 +347,36 @@ export const buildTimelineData = ({
   };
 };
 
-// globalStartDate falls at an arbitrary time of day, so ticks anchor to
-// midnight rather than to it.
+/**
+ * Minimum bar width, so a short phase still draws (ALL-2476). Kept to a few px:
+ * a completion line or an open phase's outline after it doesn't cover the excess.
+ */
+export const MIN_PHASE_BAR_WIDTH_PX = 4;
+
+/**
+ * The one instant-to-x mapping: bars, now, reminders, ticks and scrolling all
+ * use it, so things that happen at the same instant line up.
+ */
+export const timelineScale =
+  (globalStartDate: Date, pixelsPerDay: number) => (time: Date | number) =>
+    ((new Date(time).getTime() - globalStartDate.getTime()) * pixelsPerDay) /
+    millisecondsInDay;
+
+export const phaseBarBounds = (
+  phase: Pick<PhaseSegment, "startDate" | "endDate">,
+  xForTime: (time: Date | number) => number,
+) => {
+  const left = xForTime(phase.startDate);
+  return {
+    left,
+    width: Math.max(xForTime(phase.endDate) - left, MIN_PHASE_BAR_WIDTH_PX),
+  };
+};
+
+/**
+ * Tuesday midnight Pacific, launch day, whatever the viewer's zone. The dates
+ * are `TZDate`s in `LAUNCH_TIME_ZONE`, so formatting them reads in Pacific.
+ */
 export const weekTicks = ({
   globalStartDate,
   globalEndDate,
@@ -353,18 +386,14 @@ export const weekTicks = ({
   globalEndDate: Date;
   pixelsPerDay: number;
 }) => {
-  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-  const firstDay = startOfDay(globalStartDate);
-  const ticks: { date: Date; left: number }[] = [];
+  const xForTime = timelineScale(globalStartDate, pixelsPerDay);
+  const firstDay = startOfDay(new TZDate(globalStartDate, LAUNCH_TIME_ZONE));
+  const ticks: { date: TZDate; left: number }[] = [];
 
   let current = isTuesday(firstDay) ? firstDay : nextTuesday(firstDay);
 
   while (current <= globalEndDate) {
-    ticks.push({
-      date: current,
-      left:
-        (current.getTime() - globalStartDate.getTime()) * pixelsPerMillisecond,
-    });
+    ticks.push({ date: current, left: xForTime(current) });
     current = addWeeks(current, 1);
   }
 
@@ -380,8 +409,8 @@ export const firstRowActiveInWeek = (
     phases.some(
       (phase) =>
         SHOWS_BAR[phase.status] &&
-        startOfDay(phase.startDate) < weekEnd &&
-        startOfDay(phase.endDate) > weekStart,
+        phase.startDate < weekEnd &&
+        phase.endDate > weekStart,
     ),
   );
 };

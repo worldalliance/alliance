@@ -5,11 +5,7 @@ import {
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
-import { adminRefusalMessage } from "./adminRefusal";
 import { usePatchQueryData } from "./usePatchQueryData";
-
-export const postsLoadError = (error: unknown) =>
-  adminRefusalMessage(error, "Failed to load posts.");
 
 const postsQuery = queryOptions({
   queryKey: queryKeys.postsAdmin(),

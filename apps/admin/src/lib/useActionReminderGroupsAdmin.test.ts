@@ -3,7 +3,10 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { focusManager } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useActionReminderGroupsAdmin } from "./useActionReminderGroupsAdmin";
+import {
+  useActionReminderGroupsAdmin,
+  useReminderGroupsForEvents,
+} from "./useActionReminderGroupsAdmin";
 
 type StoredGroup = { id: number; name: string };
 
@@ -104,6 +107,21 @@ describe("useActionReminderGroupsAdmin", () => {
     );
     expect(names(view)).toEqual(["Announcement"]);
     expect(requests).toContain("groups 5");
+  });
+
+  it("joins the groups of several events into one list", async () => {
+    const view = renderHook(
+      () => useReminderGroupsForEvents([5, 6]),
+      queryWrapper(),
+    );
+
+    await waitFor(() =>
+      expect(view.result.current.groups?.map((group) => group.name)).toEqual([
+        "Announcement",
+        "Announcement",
+      ]),
+    );
+    expect(requests).toEqual(expect.arrayContaining(["groups 5", "groups 6"]));
   });
 
   it("requests nothing without an event", () => {

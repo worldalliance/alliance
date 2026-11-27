@@ -1,5 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import type { CustomValidatorDraft } from "../components/form-fields/customValidatorDrafts";
+import type { CustomValidatorDraft } from "../pages/forms/builder/questions/customValidatorDrafts";
 import { customValidatorIds } from "./customValidatorIds";
 import { resolveValidatorDrafts, startFormDraft } from "./useFormDraft";
 

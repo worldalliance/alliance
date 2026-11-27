@@ -7,7 +7,12 @@ import {
   type UpdateContractDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useInvalidateContractsAdmin } from "./useContractsAdmin";
 import { useStoreQueryData } from "./usePatchQueryData";
 
@@ -16,6 +21,7 @@ import { useStoreQueryData } from "./usePatchQueryData";
 export function useContractAdmin(id: number | null) {
   const storeQueryData = useStoreQueryData();
   const invalidateList = useInvalidateContractsAdmin();
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: queryKeys.contractAdmin(id),
@@ -30,7 +36,10 @@ export function useContractAdmin(id: number | null) {
 
   const store = async (saved: ContractAdminDto) => {
     await storeQueryData(queryKeys.contractAdmin(saved.id), saved);
-    await invalidateList();
+    await Promise.all([
+      invalidateList(),
+      queryClient.invalidateQueries({ queryKey: queryKeys.currentContract() }),
+    ]);
   };
 
   const create = useMutation({

@@ -1,0 +1,757 @@
+# Decisions
+
+Agent decisions for the admin redesign. Each may be reconsidered within `REQUIREMENTS.md`. The supporting files named here are in this directory unless a path says otherwise.
+
+## Scope and approach
+
+- **Design from scratch, reuse the non-visual code.** Every screen is designed new on the new system, but a page's data hooks, rules, mutations and tests are kept wherever its job is unchanged. This is how the requirement that staff can do everything they do today is enforced: the existing tests keep asserting it. Rewriting the logic too was rejected as the likeliest way to drop a feature silently. Agent decision; the user settled only the outcome.
+- **One PR is the user's request, against the evidence.** Every source in `EVIDENCE.md` on review size and large agent migrations favours small units. The plan compensates with small area-scoped commits, each reviewed as it lands.
+- **The admin owns its UI components.** It stops importing UI components from `sharedweb/ui` and builds its own in `apps/admin/src/ui`, since restyling the shared ones would change the member-facing app. It keeps importing the shared form renderer, API client and hooks unchanged. Outside `apps/admin`, the change touches only dependency declarations in `apps/frontend/package.json` and the lockfile, which the repo's single install root requires, plus lint configuration. The user was told and did not object; not an approved requirement.
+- **Base UI underneath.** The repo already uses `@base-ui/react`, and it is shadcn/ui's default base (`EVIDENCE.md`). The admin components start from shadcn's Base UI variants, restyled to the tokens. A command palette, a date picker and tables come from other libraries where Base UI has none. The user asked that Base UI be considered and did not object to the choice.
+- **A compatibility layer first.** The first build step gives `apps/admin/src/ui` the same component names, props and ARIA roles as the `sharedweb/ui` components the admin uses (265 files import them), then swaps the import paths by script. Every page picks up the new look at once and the tests keep passing; areas are then redesigned one by one. From the second opinion's premortem, and the same order the Bun rewrite used: mechanical port first, redesign after.
+- **Existing tests are the behaviour contract.** They pass, changed only where markup changed and keeping what they assert.
+- **Ideas reused from the Bun Zig-to-Rust rewrite**, which the user raised: a written guide and a reference page before any fan-out, a trial on three pages, implementer, adversarial reviewers and fixer as separate agents, lint rules in place of style advice, and fixing the guide rather than hand-fixing output. Unlike that port, this change alters structure on purpose, so tests cover only pages that do not merge; the functionality inventory and screenshot judges cover the rest.
+
+## Structure and naming
+
+- **The page map is `PLACES.md`**, mapping every current route to its new place. Corrections to the prototype's map: follow-up forms get a tab on the task record; the "Pending response" tab for outreach and the image library under Media do not exist today and are not added.
+- **Forms is not in the main sidebar.** The forms list stays, labelled by the task each form belongs to, reached from "All pages and search" and from tasks. The user was told this and has not confirmed it.
+- **A "Queues" group in the sidebar** holds the welcome queue, members awaiting a group, and partnership responses, so each count sits on the queue it counts.
+- **Scheduled plans becomes "Scheduled jobs" under Activity.** It lists scheduled suspensions and forum auto-completes, not tasks.
+- **Rename edge cases.** The phases keep their names ("Members taking action", "Office taking action"), since "member task" would change their meaning. `/actions/...` becomes `/tasks/...` with redirects. "Action updates" becomes "Task updates" and "Action suite" becomes "Suite".
+- **US spelling and date format** ("Organization", "Nov 30"), which the admin already uses.
+- **Every page stays reachable by browsing.** The bottom sidebar entry opens the palette with every place listed by area before anything is typed.
+
+## Tasks, suites and launch
+
+- **Today's journey is `CUJ-SUITE.md`**, derived from code at c722280863, rechecked at ff886c540b after the rebase onto PR #1028, and the suite launch flow's provenance. A suite is one launch: its tasks share the members taking action start and the office taking action deadline; other events differ per task. Creating any dated event is what makes tasks visible to members, so a suite is created with a name only and events are created only by the launch, after its checks and typed confirmation. The order staff work in, who reviews before launch, and how tasks outside a suite are launched could not be derived; the user was told.
+- **The task journey is `CUJ-TASK.md`**, derived the same way. Most guards on member-facing effects live only in the admin UI (typed phrases, staff testing gates, readiness, launch blockers), so a screen dropped in the redesign drops its guard. Rules the build follows from it: every operation its member-effects list names keeps today's guard or a stronger one, including PR #1028's typed phrases ("launch to real members" for a members taking action event, "I am going to notify many real members" for an update's notification) and its leave guards, so the new shell keeps the layout's `LeaveGuard` around every route and each rebuilt screen keeps its confirmation with the call it guards, since those guards live in components and not in the mutations; no control sets a task's status directly, since any event other than Draft makes a draft visible to members, so "Abandon" and a status dropdown are not added; an event's date never defaults to now; a save that reaches members at once (a live task's form or variant, an update's first content save, a reminder group) says so before saving; sending an update's notification keeps a typed confirmation, not a cancellable countdown; reminders and follow-up forms stay distinct from updates and keep their own confirmations; Paste JSON, Duplicate, the project page's staff testing and "Schedule release" flow, the readiness checklist, visibility, cohort, public-only, archive, follow-up forms and cohort decisions all keep a place on the task record. The prototype's task screens break several of these and are not followed there.
+- **`STAGING-CHECK.md` checks the journeys against staging data** (a nightly anonymised copy of production, loaded locally 2026-11-24; 124 tasks). It bears out the user's account: 102 of 105 launched tasks were in a suite; only member action, office action and completed events are in use; 197 of 226 post-launch form saves were copy or display only; no pasted task carried events. So adding an event to a standalone task is a deliberate, guarded path rather than an everyday control, Paste JSON keeps events off by default, and the builder warns when an edit to a live form removes a field or option or changes a field's id or type. 38 of 64 launched suites hold one task, so the suite screens must read well for a single task.
+- **Visibility mode Public stays the default for a new task.** It means anyone with the link can open a launched task's page, while the cohort governs who is assigned, reminded and counted in every mode; `publicOnly` is a separate setting and is off by default. The user understands Public this way; an earlier question conflated the two settings, so no change to the default was asked for. The task record names the two settings so they cannot be mistaken for each other. Public-only drafts being openable by id, and reminders not checking that a task has launched, are server behaviours, filed as ALL-2472 and ALL-2473 in the "Modern admin" Linear project. Neither the missed-suite path nor the delivery service adds a way for a reminder to reach members before launch (`CUJ-TASK.md`).
+- **Tasks area:** a timeline by suite or by project, plus list and priority views of the same tasks. A suite's status is the phase of its two shared events. Projects get a colour derived from their id, since the server stores none.
+
+- **The form builder gets its own design pass** from today's builder and its inventory; the prototype's builder is a mood reference only, since the user dislikes several unnamed things in it. Selecting, hovering, opening the inspector or loading never moves the content in view, and the same rule holds across the admin. Told to the user, who did not object.
+- **Presentation is written new, not patched.** The user's reason for a greenfield redesign is that agents edit an existing design worse than they write one. Area agents write each screen's markup new from its inventory entry and the templates, keeping hooks, mutations and tests; restyling existing JSX does not count as redesigned.
+- **Little-used features get no prominence.** The project's "Schedule release" flow (one use on staging) and the event types not in use stay reachable on the task record but are not foregrounded. A status dot where there is no room for a label is dropped rather than left unexplained.
+- **Where the reference prototype is silent or not followed, a screen other than home leans to prototype C's look.** The user's preference leaves out C's home page (`REQUIREMENTS.md`). This is the agent's reading of the user's preference for C's look over A's; the user stated the preference, not this rule.
+
+## Data and defects
+
+- **`DATACHECK.md` lists 17 things the prototype shows that the server cannot provide**, each with a substitute or "drop". Notably forms have no draft or publish step, there is no engagement data, and several builder field types do not exist.
+- **Defect fix list** (frontend-only, from `inventory/`): the task overview's link to `/users/:id`; no confirmation when removing a group member or leader; a failed invite create showing nothing; the event log filter offering 9 of 17 event types; the members card view crashing on a member with no record for a task; the Tags page's "Loading groups..."; title-case headings; a Remove button that can never appear; an unread link parameter. Both response exports follow the filters on screen, and the CSV gains the HTML export's submission date, option labels and answers to removed questions. Whether editing a form's title, renaming or deleting a suite, changing a contract's content, and editing a task's events outside a suite need the server is unknown; each is fixed if it does not, and filed in the "Modern admin" Linear project if it does.
+- **`/forms/new` stays reachable by URL**, since removing it would reduce what is possible today.
+- **The home feed and presence** in the first prototype are dropped: Home is the four queues and the stats.
+
+## Process
+
+- **Consultation:** a step-back brainstormer, an industry researcher, a clean-room designer and a second opinion ran before the decisions went to the user; the usage consultant found production's admin sends no page views to PostHog yet. All were Claude agents, as were the prototype builders, so their agreement is one model family's judgement.
+- **Models:** subagents doing design, implementation and fixing run on Fable 5.2 (`claude --model claude-fable-5-2`); who reviews follows **Cross-model review** below. A subagent that fails with an overloaded error is retried with backoff, and after repeated failures the unit runs on Opus 5.5 so one busy model cannot stall the build; the unit's report names the model that did it. Mechanical work, such as scripted import swaps and monitoring, runs on Opus 5.5.
+- **Cross-model review:** with Codex out, a unit is reviewed by the model that did not write it, Opus 5.5 for Fable 5.2's work, as the user's process asks for a second opinion from another model. Told to the user.
+- **Concurrency:** about 30 to 40 agents at once while they run typechecks and tests, wider for read-only work, adjusted by a monitoring agent.
+
+## Foundation: tokens and components
+
+- **The admin's tokens take new names; nothing the member form renderer uses is overridden.** They sit in a second `@theme` block in `apps/admin/src/index.css` (`canvas`, `surface`, `line`, `fg`, `accent`, the status colours and their `-soft` pairs, `cat-1` to `cat-6`, `text-body`, `h-control`, `rounded-card`, `shadow-pop`, `duration-fast`, …), with values from the prototype's Comfortable density. Tailwind's own scales (`rounded-lg`, `text-sm`, `ease-out`) and the earlier entries (`green`, `gray-1`, `page`) keep their values, because `sharedweb` and `shared` are styled with them. The prototype's JetBrains Mono is not added: the admin bundles no copy and the existing `.font-mono` stack serves.
+- **The admin's type is set on `body`, and member-facing content resets it with the `member-surface` class.** The root font size stays 16px so `rem` is unchanged. Form previews, the builder canvas, response replays, update cards and contract previews carry `member-surface`, which restores Source Sans 3 at 16px; a later page that mounts the shared form renderer, `DisplayOnlyBlocks` or `AppMarkdownWrapper` must put it on the container. Content those portal to `body` falls outside it and takes the admin's font.
+- **Contrast is a test.** `apps/admin/src/ui/tokens.test.ts` reads the tokens from `index.css` and checks the text pairs at 4.5:1 and the control-boundary and graphic pairs at 3:1 (WCAG 2.2 SC 1.4.3 and 1.4.11, formal standard), the pairs the prototype's `contrast.mjs` checked plus the hover fills. A new pairing, or a dark theme, adds its pairs there.
+- **`apps/admin/src/ui/cn.ts` replaces `@alliance/shared/styles/util`'s `cn` inside the admin's components.** tailwind-merge knows only Tailwind's default theme, so the shared `cn` reads `text-body` as a colour and drops it beside `text-fg`. The admin's `cn` registers the token names; a token added to `index.css` is added there too.
+
+- **`apps/admin/src/ui` has one module per `sharedweb/ui` module the admin imported, under the same file name, so the import swap is a path change.** Visual components are the admin's own, on the tokens: Avatar, Badge, BaseButton, Button, Card, CenterLayout, CharacterLimitNotice, DateTimePicker, Dropdown, DropdownMenu, FormInput, HoverCard, InlineError, LargeCheckbox, List, Modal, Pagination, Spinner, Tooltip, UploadingWithCancel, UserSelect. They are forks, so `bun run dupcheck` reports them against `sharedweb/ui`; that is intended, since the admin's and the member app's components now change separately. Each keeps the props the admin uses and the roles and accessible names its tests find; props and enum members no admin file used are dropped (`asDiv`, `hoverText`, `withArrow`, `bgImage`, the bottom-sheet alignment, unused button colours).
+- **These stay the shared module, re-exported from `apps/admin/src/ui`**, each with a comment saying why: `ToastProvider`, `SiteAppProvider` and `ViewerAuthenticationProvider` are contexts the shared form renderer and shared hooks read, so a fork would be a second instance they never see; `zIndex` is one stacking order for both; `AppMarkdownWrapper`, `FormMarkdownWrapper` and `ActionUpdateCard` show member content as members see it; `CommunityMembersTable` and `UserProgressPills` are member-app features with their own data hooks, left for the members area to replace; `NewTabMark` has nothing to restyle. `DateTimePicker` and `UserSelect` re-export the shared date helpers and `useSelectableUsers`. So toasts keep the shared look: `sharedweb` does not export the toast context, and restyling them needs that export, which this change may not make. `confirm()` gets the admin's own dialog (see "Foundation: templates, lint and guide").
+- **`Button` takes `variant` (`ButtonVariant`) for new code and still accepts the legacy `color` (`ButtonColor`)**, mapped onto the variants: Black, Stone, Blue and Green are all Primary, since the old admin used them interchangeably for the main action and for the selected side of a toggle. `ButtonColor` and `BaseButton` go once no page passes them. `size` stays a string union because about a hundred call sites pass the literals.
+- **New primitives are the ones with a known use:** Input, Textarea, Select, Checkbox, Switch, Tabs, Popover, Sheet, Table, EmptyState, Skeleton, plus `BadgeTone` on Badge and `DropdownMenu`, `DropdownMenuTrigger` and `DropdownMenuSeparator` beside the existing menu parts. `Modal` is the dialog, so there is no second one. `Sheet` is the former `components/SideDrawer`, moved. Select and Checkbox are the native elements, styled: existing pages and tests drive native ones, and they keep the platform's keyboard and screen-reader behaviour. Agent judgement.
+
+## Foundation: templates, lint and guide
+
+All agent judgement unless marked.
+
+- **Page templates live in `apps/admin/src/ui/templates`, and `Page` owns the header.** `Page` renders the breadcrumb, the one `h1`, badge, description, actions and tabs inside the page content, since the shell's frame has no header. The description sits under the title on every page; the prototype puts a List's beside it.
+- **List and Workspace pages take the frame's height (`Page fill`) and scroll only their body.** That is what makes the table header stick under the filter bar and the panes scroll separately. The frame's inner column has the main region's height for this.
+- **Tabs and list views are in the URL, the first being the bare URL**, through the hooks under "Foundation: joining the shell and the templates". `lib/useSearchParamTab.ts` always writes `?tab=` and stays for the old pages.
+- **`confirm()` from the admin's `useToast` opens the admin's own modal dialog (`ui/ConfirmDialog.tsx`), with the typed phrase when `requiredText` is set.** `ui/ToastProvider.tsx` now wraps the shared provider and adds this; toasts are still the shared ones. Every existing `confirm()` call site changed look at once, and `components/ConfirmDialog.tsx` became a wrapper of the same dialog. The dialog ignores the shared `mode`, `anchorEl` and `placement` options, which pages not yet redesigned still pass; the type keeps accepting them until those pages are rebuilt, since removing them means editing some fifteen old files and their handlers' signatures. Because the dialog is modal and makes the page behind it inert, three test files that clicked the last of several same-named buttons now find the button inside the dialog, and a fourth, which presses a page button while a confirm is open, queries it with `hidden: true`. A confirm no longer closes on a click outside it: Cancel and Escape decline.
+- **The lint for raw colours and arbitrary values is a local rule, `apps/admin/eslint/design-rules.mjs`, not a plugin.** `eslint-plugin-better-tailwindcss` fits, but installing it moves existing packages in `bun.lock` (`EVIDENCE.md`, "The Tailwind lint plugin"), against the promised check that the lockfile only gains entries. The local rule reads every string and template literal in a file, so it needs no list of class-carrying attributes or functions.
+- **Bracketed variants pass the lint; bracketed values don't.** `aria-[current=true]:bg-accent-soft` selects a state and carries no design value; `p-[13px]` and `bg-(--x)` do, and so do a bracketed breakpoint (`max-[600px]:`), a bracketed modifier (`text-sm/[17px]`) and a value a template builds (`` `w-[${width}px]` ``).
+- **The lint also fails the shared `cn`, `ButtonColor`, `window.confirm` and a bare `confirm(`** in files off the legacy list, since each has an admin replacement.
+- **One legacy list for all the design rules**, `apps/admin/eslint/legacy-files.txt`, 387 files when generated. A file comes off when it is redesigned; `bun eslint/legacy-list.mjs` only removes lines, and its `--init`, which regenerates the list, is for setting it up. A listed file that no longer exists fails the lint, so deletions clean the list.
+- **`lib/formatDate.ts` is the admin's one date formatter and `ui/PhaseBadge.tsx` the one phase badge**, with the tones the guide's draft proposed (Planned, Office taking action and Resolution share the info tone and differ by word).
+- **The "None, with undo" confirmation level has no component yet:** the shared toast has no action button. The guide tells pages to use the Confirm level where a mistake would cost work, until the system owner adds one.
+
+## Foundation: joining the shell and the templates
+
+All agent judgement.
+
+- **A page names its place or its record and `Page` does the rest.** `Page` takes `place` (a `PlaceId`), or for a record's page `record` (a `RecordId`) with the record's `title` and `parents`, and sets the document title, breadcrumb and `h1` from `places.ts`: a record's place and the word shown until its name loads come from `RECORDS`. Passing a trail and a title by hand was rejected: a page could leave the `<title>` out, or build a trail that disagrees with the sidebar. The document title is the `h1`'s text; titling an area's first page by the area was dropped, since it called the Invites page "Growth".
+- **The breadcrumb ends in the page's own name, unlinked, as the prototype's does, and an area's first page (Home, Inbox, All tasks, People, Invites, Task updates, Event log, Kora participants, Settings) shows none** but keeps the row, so every page's title sits at the same height. A lone "Home" above the title "Home" read as a mistake.
+- **One way to bind tabs and views: `usePlaceTabs`, `usePlaceViews`, `useRecordTabs`** (`ui/templates/usePlaceTabs.ts`), which read labels and order from `places.ts`. The page repeats the ids so the selected one is a typed union, and the hook throws when they differ from `places.ts`, so an id can't drift from the redirects and palette. `useUrlTab` is gone. `tabHref` stays for linking to a tab, and `TabbedPlace`, `TabLinks` and `selectedTab` for merged places not yet redesigned.
+- **Changing a tab drops every search param but `view`; changing a view keeps them all.** A tab's filters, page number and open item mean nothing on its sibling, and the interim tab links already did this. A view is the same items laid out differently, so its filters stay.
+- **The frame's inner column has the main region's height and its children don't shrink**, in place of a minimum height, so `Page fill` resolves `h-full` and a taller page still overflows and scrolls the main region. The old pages whose root was `h-full` now say `min-h-full`, so they grow with their content as they did when that height resolved to nothing.
+- **`BulkBar` hangs from a zero-height element stuck to the foot of the main region**, which centres it on the content beside the sidebar and works on a page that scrolls whole too. It goes last in the page's body.
+- **`SearchField` registers `/` through the shell's shortcut registry** (`useShortcutInShell`), so it is listed under `?` and covered by the single-key off switch (WCAG 2.2 SC 2.1.4, formal standard). Outside the shell it binds nothing, which keeps a page's tests free of a provider; `useShortcut`, which throws there, would put one in every test of a page with a search box. A page has one `SearchField`, since two would claim the same key.
+- **The sidebar's width transition is the utility `transition-width`** in `index.css`, so no shell file is on the lint's legacy list (386 files after that).
+- **No `MemberSurface` component:** member content is marked by the class `member-surface` on its container, which the guide names; a wrapper would add an element for one class.
+- **An area edits the `tabs` of its own records in `RECORDS`** where nothing links to the ids yet; every other change to `places.ts` or `routes.ts` goes through the system owner.
+
+## Build plan
+
+Proposed by the agent; the user has seen its outline in conversation but not approved it as written.
+
+1. **Rebase and refresh.** On the user's word, rebase onto `origin/main`, which then holds PR #1028. Recheck `CUJ-TASK.md`, `CUJ-SUITE.md` and the inventory entries for the pages #1028 touched, since they describe c722280863.
+2. **Foundation, serial, one small team.** Tokens and the Comfortable density; `apps/admin/src/ui` as the compatibility layer, then the scripted import swap as its own commit; the shell, sidebar, palette and route map with redirects from `PLACES.md`; the page templates; lint rules that fail on raw colour classes, arbitrary values and `sharedweb/ui` imports in the admin; a written guide (`apps/admin/DESIGN.md` or similar) and one finished reference page. Nothing fans out before this is committed and its checks pass.
+3. **Trial.** Three pages of different kinds built from the guide by fresh agents. Where they come out wrong, fix the guide, not the pages.
+4. **Fan-out by area**, one agent per area in its own worktree from `scripts/new-worktree.sh`, each owning its folders only and asking a single system owner for any change to tokens, components or the shell. Areas follow `PLACES.md`: tasks; suites and launch; projects; forms and the builder; members; inbox; growth; content; activity, research and settings; home. Each agent works from its inventory file, `DATACHECK.md` and the journey files, and reports which inventory capabilities it carried, by id.
+5. **Review as it lands.** Each area's commits go through the repo's review loop as they are finished, not at the end.
+6. **Verification.** Typecheck, lint and the existing tests per area; an inventory audit by a separate agent, capability by capability; open-ended judging of the built screens, as a whole product next to strong reference products, listing concrete defects each with a location and a fix, against the user's stated rules with the prototype as mood only (a departure from the prototype is not a defect in itself); a check that the diff touches nothing outside `apps/admin` but dependency declarations, the lockfile and lint configuration, and that the lockfile only gains entries; and that typing an old page name in the palette finds its new place.
+7. **PR.** One draft PR with the page map and screenshots; a Codex pass before merge.
+
+
+## Shell: routes and places
+
+Agent judgement throughout; the user was asleep and has not seen these.
+
+- **`apps/admin/src/places.ts` is the page map in code**: every area, place, tab, view and record from `PLACES.md` with its label, path and old names. The sidebar, palette, breadcrumb trail and titles read it; `legacyRoutes.ts` beside it lists where each old URL went, and `routes.test.ts` holds the 64 old routes and checks each still opens a page.
+- **URLs follow the breadcrumb**: a place sits under its area and a record under its place (`/tasks/suites/12`, `/members/groups/4`, `/growth/invites`, `/content/media/videos/3`). The area's own page is the area's path (`/tasks`, `/members`, `/activity`, `/research`); Home stays `/`. A task is `/tasks/:id` and a member `/members/:id`, which a place's fixed segment (`/tasks/suites`, `/members/tags`) outranks. The prototype's top-level `#/task/:id` and `#/suite/:id` were not followed, so the URL can be shortened to reach the list above a record.
+- **A tab is `?tab=` and a view `?view=`, the first being the bare URL**, as the design guide's URL rules say. A view is another layout of the same items (Tasks: timeline, list, priority; People: table, map); a tab is a part with its own content. Path segments per tab were rejected because the page templates bind tabs to `?tab=`, and area agents merging pages would then have changed URLs a second time.
+- **Merged places still render today's pages.** A module in `src/places/` per merged place picks the old page from `?tab=` or `?view=` and shows plain links between them (`shell/TabbedPlace.tsx`); the area's redesign replaces it. Form responses moved under the form's `?tab=responses`, so that page's own `tab` and filter params take the `resp_` prefix the task record already uses, and the redirect from `/forms/:id/responses` renames them.
+- **Old URLs redirect with `<Navigate replace>`** in one route module mounted on every old pattern. A loader's `redirect()` was rejected: React Router strips the hash from the request a client loader sees, so the hash would be lost.
+- **Suites had no list page**, only `/new-suite` and the suite record, so `places/SuitesPlace.tsx` is a new plain list of suite names with a New suite button, for the tasks area to replace. New suite is `/tasks/suites/new`.
+- **The live invite feed** is the Invites place's `?tab=feed`, inside the shell, with a Full screen button to `/growth/invites/feed`, which is the old chromeless page. The Kora transcript preview stays chromeless at `/research/preview/:batchId`.
+- **Settings is today's test push page** at `/settings` until the settings area is built.
+- **The member site's "open in admin" links are unchanged.** They live in `sharedweb` and point at old admin URLs, which redirect; the admin's "Open in member zone" link maps its new path back to the old one before asking `sharedweb` for the member path.
+
+## Shell: sidebar, palette, shortcuts
+
+Agent judgement throughout; the user was asleep and has not seen these.
+
+- **The frame has no header of its own.** `shell/ShellLayout.tsx` is the sidebar and one scrolling `<main>`; a page renders its own header, so no page is double-headed. The main region returns to the top when the path changes, since the router only restores the window's scroll. Back and Forward land at the top too, against the Vercel guideline in `EVIDENCE.md` (vendor recommendation); the old layout neither reset nor restored its scroll, so a page opened at the offset the one before it was left at. Restoring it means storing `<main>`'s offset per history entry, which was left out as work nothing so far has asked for, not for a constraint.
+- **The sidebar's icons sit in a column as wide as the collapsed sidebar**, so collapsing hides labels without moving any icon, the bottom search entry included, and the collapse button stays where the pointer left it. Collapsed or not is remembered per browser; before, it reset on reload.
+- **Counts are accent-coloured, not amber as in the prototype or red as before**, because warning and danger colours are kept for warnings and failures. A count reads after its entry's name ("Inbox (3)"), shows "!" when it couldn't load and nothing at zero or while loading. The welcome queue's count is new in the shell, from the list its page already fetched.
+- **"Open in member zone" moved from a floating icon to a labelled row in the sidebar's footer**, since an icon alone doesn't say what it does. The account row opens Settings, Keyboard shortcuts and Sign out; "Log out" became "Sign out".
+- **The staging strip is a labelled bar above the frame**, not a fixed overlay, which covered the top of every page.
+- **The palette is Base UI's Autocomplete in the admin's Modal**, so no dependency was added; cmdk was the alternative. It keeps one size whether browsing or searching. A page found by an old name shows "Was Scheduled plans" beside its new one; a tab's own label and an old sidebar folder's name find a page too, as keywords, without claiming a rename. Each tab and view is its own search result ("People › Away"), and results that share a URL show once. `shell/paletteEntries.test.ts` types every label of the old sidebar and checks the first result is its new place.
+- **Shortcuts register with one listener** (`shell/shortcuts.tsx`): ⌘K, `[`, `g` then an area's letter, `?`. Single-key ones are ignored while typing or while a dialog is open, and a switch in the `?` list turns them off (WCAG 2.2 SC 2.1.4, formal standard); the list is also in the account menu, so it is reachable with them off. Two shortcuts throw when they share keys or one's keys start the other's sequence, since the shorter would hide the longer. `mod+` is ⌘ alone on a Mac and Ctrl alone elsewhere, so Ctrl+K on a Mac keeps deleting to the end of the line.
+
+## Reference page: Members › Groups
+
+All agent judgement. `apps/admin/DESIGN.md` names the page as the one to copy.
+
+- **A place's files live in one folder, `apps/admin/src/pages/<place>/`**, with the route files named `<Place>Page.tsx` and `<Record>Page.tsx`, a file per tab, dialog and rules module, and tests beside them. The old layout spread a page over `pages/`, `components/` and `components/<page>-detail/`, which a later agent could not imitate from the guide alone.
+- **The group record has three tabs: Members, Progress, Settings.** The old page stacked the settings form, the members and leaders cards and the progress table; with 48 members the progress table sat five screens down. Members is first because managing who is in the group is what the record is opened for; which tab staff want most could not be derived.
+- **Members and leaders are one table with a Role column**, leaders first, in place of two cards listing overlapping people. A leader the server does not also list as a member still gets a row, with no Remove.
+- **Removing a member or a leader asks first**, the defect the fix list names. Making a leader keeps its confirmation, now the admin's dialog instead of a popover.
+- **Add member and Add leader open a dialog holding the picker**, so picking someone moves nothing on the page; the picker's chips used to grow the card.
+- **New group is a dialog that opens the new group's record**, where the old form sat under the list and left staff on it. The next step after creating a group is adding its people.
+- **Confirm assignments stays enabled and says what blocks it when pressed**, where the old button was disabled with no reason beside it. Nothing can be assigned that could not before: a blocked press opens no dialog.
+- **The capacity field is always shown, disabled with its reason when no setting needs it**, so ticking a setting moves nothing.
+- **The list shows a group's capacity whenever it has one, and adds Open seats.** The old row showed "/ capacity" only with staff assignment on and greyed the count when full, which was colour alone. Open seats is the capacity less the members and less the selections awaiting confirmation, never below zero, so it reads 0 where the old row greyed. Unused capacity, a card on the old page, is in the filter bar beside the count of groups.
+- **The list gained a search by name** (`?q=`), over the list the page already loads whole. The old page had no filter; the guide now allows this one everywhere.
+- **The progress table is still the member app's `CommunityMembersTable`**, in a `member-surface` container on its own tab, and is no longer given `communityId`: that prop only fed a Remove control that could never render there. Removing lives in the Members tab.
+- **Copy says "group" everywhere**; the old page mixed in "community". The assignment's confirmation button reads "Assign members", and the delete confirmation's "Delete group".
+- **A failed write from a row or the header shows as a dismissible danger banner under the tabs, with a toast**; a failed save shows in the save bar and a failed write from a dialog in the dialog. It appearing moves the body down, which the no-movement rule gives way to here: a failure has to stay on screen until read.
+- **The foundation gained what the page needed and every page will:** `Button`'s `busy`; `CheckboxField`, `useFocusFirstInvalid` and `LOAD_FAILED_FALLBACK` in the templates; `nameLinkClass` and `linkClass`; `formatCount` and `countOf`, which add thousands separators to a number and to a count with its noun (`withCount` from `common` leaves them out, and changing it would change the member apps); a held description line in the page header; a filter bar of one height; `Panel` and `FormSection` as named regions. `SearchField` keeps its own text, because bound straight to a search param it dropped letters typed faster than the URL updated. `TableSkeleton` no longer outgrows its table.
+- **A pick whose group no longer takes staff assignments stays visible and blocks Confirm.** The select keeps the picked group and the row says "This group is not available for assignment."; the old panel hid the group, showed its "Select group" placeholder and let the server refuse the confirmation.
+- **The Add dialogs hold their own in-flight state**, so Cancel, dismissal and the submit stay held for the whole write, and a pick made meanwhile is ignored.
+- **The confirm dialog's button is still disabled while its work runs**, though that drops focus: the old wrapper around the same dialog has a test from before the redesign that asserts `disabled`. Filed as ALL-2483 for when the wrapper is gone.
+- **A leader's row keeps two buttons, Remove leader and Remove**, as the guide allows for two short actions; a "More" menu holding one item would hide the destructive one behind a click.
+
+## Review loop, round 1
+
+All agent judgement; nobody was there to ask.
+
+- **Splits and reorders the reviewers asked for were mostly declined**, because the branch lands as one squashed PR and no commit deploys alone: the type switch and `cn` stay in the tokens commit, `Kbd` in the frame commit, the registry with its first use, the templates commit and the two template follow-ups whole, each group's decisions in their own commit after the code, and the frame before the palette. Three were done because they were cheap and removed a wrong intermediate state: the member-surface fix and the search shortcut's registration were folded into the commits they fix, and the guide now lands once, after the shell and templates it describes.
+- **The lint commit still names `apps/admin/DESIGN.md` before the guide exists.** Moving the guide later was worth more: a guide ahead of its code told agents to hand-build what the shell already had.
+- **`RECORDS` keeps the planned tab ids for records not yet redesigned** (task, suite, project), from `PLACES.md`, though the old record pages read other ids. Nothing links to them yet, and `useRecordTabs` throws when a rebuilt page's ids differ.
+- **The admin's `DateTimePicker` keeps its copy of the shared picker's change handler.** Sharing it means a hook exported from `sharedweb`, which this change may not touch; filed as ALL-2480.
+- **`InviteFeedPage` takes `embedded`** to render a `div` inside the frame's `<main>` and stays a `<main>` on its full-screen route.
+
+## Review loop, round 2
+
+All agent judgement; nobody was there to ask.
+
+- **The splits and reorders asked for again were declined again**, for round 1's reason, and the commit messages now name what each commit holds beyond its subject. One was done: the review rounds' decisions have their own commit, apart from the reference page's.
+- **A place still shown as its old pages hides its tab links while a view with its own page is open** (Members › Map). The map shows every member, so a tab marked current beside it claimed a filter that wasn't applied.
+- **`useFocusFirstInvalid` returns a function the submit handler calls**, in place of watching the errors object: the guide has errors appear on blur too, and focus moving then would hold a keyboard user in the field they were leaving.
+- **`SearchField` shows its own text while the reader is in it and the value once they leave.** Two rounds of telling its own late values from outside changes by matching what it had sent each left a case wrong, the last being text typed back to an earlier one, so it no longer tracks what it sent (round 3). The cost: a change from outside while the box has focus, such as Back from the keyboard, shows in the list and not in the box until the reader leaves it.
+- **`BulkBar` is a named group and `WorkspaceToolbar` has no role.** `role="toolbar"` promises one Tab stop with arrow keys between its controls (WAI-ARIA Authoring Practices, W3C guidance), which neither had.
+- **"New group…" ends in an ellipsis**, by the guide's rule for a button that opens a dialog asking for more.
+- **The admin's `UserSelect` ties its label to its search box.** The shared one it was forked from doesn't; the fix was two lines in a file the admin now owns.
+- **`Popover` stays though nothing imports it yet**: it is one of the primitives listed above as having a known use.
+- **The guide gives no pixel width for the form column.** It said 640 px where `PageBody width="form"` is 704 px; which the redesign wants is the system owner's to settle, and `width="form"` is all a page needs.
+- **Kora participants' two tabs are not in `places.ts`**; the guide's template map says to ask the system owner for them. Adding them to the map alone would put palette results on tabs the old page doesn't have.
+- **The old Groups page's root says `min-h-full` in the frame-height commit after all.** Round 1 left it because a later commit deletes the page; measured in a browser by round 2's reviewer, it lost its bottom padding in that commit.
+- **Left as follow-ups:** the admin's `Pagination`, `Modal` and `UserSelect` copy logic from `sharedweb` (ALL-2487), as `DateTimePicker` does, since sharing it changes `sharedweb`; the sidebar loads the whole welcome queue for its count (ALL-2488), where a count needs a server endpoint and the cost is unmeasured; old pages whose root says `h-screen` or `min-h-screen` overflow the frame by the staging strip's height on staging, and Invites › Invite graph also by its tab strip in every environment (ALL-2489), which their areas' rebuilds replace; and `ux-guidelines` still describes a hand-styled pending button (ALL-2490), a file outside `apps/admin`, so the guide names `busy` as the admin's pattern meanwhile.
+
+## Review loop, round 3
+
+All agent judgement; nobody was there to ask. From this round a finding was fixed only where behaviour, accessibility, a guard, or the guide or these files against the code was wrong; splits, reorders and wording were declined.
+
+- **A shortcut's key may be typed with AltGr or a Mac's Option.** German and other layouts type `[` that way, and Windows reports AltGr as Ctrl+Alt, so the registry reads Ctrl+Alt off a Mac as typing, not as a modifier. Alt alone off a Mac still runs nothing.
+- **An old URL still sends its own page view before the redirect's.** A reviewer asked to drop it as double counting. It stays: after the branch only links from outside the admin and bookmarks reach an old URL, and that page view, under the old route's template, is the one count of how much they are still used, which removing the redirects later needs.
+- **The group record leaves for the list from an effect once its delete has succeeded**, so the Settings tab and its unsaved-changes guard are gone before the navigation and staff aren't asked about edits to a deleted group.
+- **A leader's role is a neutral badge**: the guide keeps accent for the primary action, selection, links and focus.
+- **`FormRecord`'s root grows with its tab's page**, as `TabbedPlace`'s does; fixed to the frame's height it cut the responses page's sticky toolbar loose after one screen.
+- **Left as follow-ups:** member form previews open their select lists in the admin's font, since the lists are portalled outside `member-surface` and the fix changes `sharedweb` (ALL-2493); tests for which page `TabbedPlace` and `FormRecord` show (ALL-2495); the form builder's save and undo shortcuts still have their own listeners, since the registry can't yet leave a text field's undo to the browser (ALL-2496); Kora's own `countOf` (ALL-2497); and the member app's user picker in single mode (ALL-2498).
+
+## Review loop, round 4
+
+All agent judgement; nobody was there to ask. The bar is round 3's.
+
+- **`ModalTitle` carries the dialog heading's size and weight, not `ModalHeader`**, so a description in the header keeps the body's weight; a caller's own classes still win.
+- **A modifier combination ends a pending key sequence**, as any other key that doesn't continue it does: `g`, Ctrl+C, `t` goes nowhere.
+- **The guide's phase order names all eight statuses**: Planned after Draft, Failed and Abandoned after Completed. The data holds them and `PhaseBadge` renders them, so a page shows them; the order of the three is the agent's.
+- **A failed add from the group's Add dialogs shows in the dialog only**, with no page banner or toast: the banner sat behind the dialog and outlived it. Row and header writes still show as the banner with a toast.
+- **Left as follow-ups:** the sidebar's search row shows ⌘K on every platform (ALL-2482, filed in round 1 and left there); a count that failed to load is an accent "!" like any count (ALL-2499); no test renders `ShellLayout`'s shortcut bindings (ALL-2500).
+
+## Review loop, round 5
+
+All agent judgement; nobody was there to ask. The bar is round 3's.
+
+- **Round 5 changed no code.** Its 16 findings repeated ones already declined or filed, or were wording, splits or missing tests; none was a defect in behaviour, accessibility, a guard, or the guide as it stands at the tip. The loop's hub classified them itself, with no fixer, and the loop ended there.
+- **Left as a follow-up:** no test covers two confirmations opened together showing one at a time (ALL-2501); the reviewer checked that the behaviour is right.
+
+## Review loop, round 7
+
+All agent judgement; nobody was there to ask. The bar is round 3's. Other agents had already branched from `modern-admin`, so every fix is a new commit on top and no commit was rewritten; findings asking for a split, a reorder or a new message were declined for that reason.
+
+- **The completion curve chart's average is "Average"**, since "Average of all tasks" was false whenever the run-length filter is on and a name for each case would add a branch for a legend word.
+- **Selecting an element in the form builder expands the outline rows and the accordion section that hold it**, to show the selection.
+- **Removing the last suite on General updates while suites failed to load leaves focus where the browser puts it**: the Add suite select is disabled then, and the group already says the suites failed. Not fixed.
+- **Left as follow-ups:** the lint's gaps (ALL-2508), the invite funnel's accessibility (ALL-2509), the groups table's width with picks stored (ALL-2510), and the shared pieces the trial pages left for the system owner (ALL-2511).
+
+## Review loop, round 8
+
+All agent judgement, under round 7's terms: nobody was there to ask, and every fix is a new commit on top.
+
+- **`PersonCell`'s 16rem cap is back on its table cell.** Round 7 moved it to the cell's content on the belief that Chromium ignores a cell's max-width; round 8's reviewer measured that it holds whenever the table lacks room, and that the cap on the content cut a name while the width it needed sat empty beside it.
+- **Before the awaiting-assignment queue loads, the groups table counts this browser's stored picks**, so the picks column shows them when the queue fails rather than "—" for none.
+- **A field group that only failed to load still takes a failed submit's focus.** Unreachable on General updates, whose one submit error comes first; left as ALL-2513.
+
+## Review loop, round 9
+
+All agent judgement, under round 7's terms.
+
+- **The guide names the colour functions and attributes the lint checks**, rather than "such as", which implied `color()` and `light-dark()` are caught.
+
+## After the page trial
+
+Five agents built pages from the guide alone; a judge compared them. What the guide and the system took from it, all agent judgement (nobody was there to ask):
+
+- **A failure is said once, with no toast.** Banner plus toast plus dialog footer said one failure three times on trial pages. Toasts are for successes; the reference page's `reportError` no longer toasts.
+- **A failed refetch keeps the content and shows `RefreshFailedBanner`**, one component and one sentence, where the trial had four treatments.
+- **The skeleton is laid out at once and shown after the delay.** An empty 200 ms placeholder collapsed its region and moved what sat below it.
+- **A sentence about time, members or consequences cites the server.** Three of five builders described the server without reading it. The reference page's removal now says what `removeUserFromCommunityAdmin` does: it removes a leader role too and notifies the member and the remaining leaders; removing a leader notifies no one; deleting a group soft-deletes it and notifies no one.
+- **Straight apostrophes everywhere**, with `react/no-unescaped-entities` allowing `'`. The rule rejected the guide's own copy style, and pages escaped it three ways.
+- **`LOAD_FAILED_FALLBACK` reads "The server didn't answer. Try again."** A 500 isn't a connection problem. Write fallbacks read "Couldn't {verb} {the thing}."; field errors from `common` keep their wording, since `common` is outside this change.
+- **A role is plain text or a neutral badge.** The reference page's accent "Leader" badge used the selection colour for a category.
+- **Unused capacity is the Groups place's description and "—" until both lists load.** It isn't a row count, and before the queue loaded it overstated the number.
+- **Open seats is the server's free seats; picks awaiting confirmation get their own column**, shown only while there are picks. The column had subtracted this browser's unconfirmed picks without saying so.
+- **A non-numeric record id is "not found" at once**, not an error, since no such record can exist.
+- **After a row's own button removes it, focus goes to the next row, else the previous, else the add button.** The judge asked for next-or-add; the previous row is nearer than a button in the panel header.
+- **Who edits `routes.ts`, `places.ts` and a record's tabs is stated once in the guide**: a builder edits its own route lines, its records' `tabs` and a record's `tab`; the rest goes through the system owner. Briefs had contradicted the guide.
+- **A merged place's route moves to `pages/<place>/<Place>Page.tsx`** and its `places/` module goes, so every place's files are found the same way.
+- **Queue counts on tabs come from `places.ts` through `withQueueCounts`, and the page passes the size it loaded.** Reading `useQueueCounts` inside `Page` would fetch all four queues on any page with a queue tab and in every test of it; the shell already fetches them, so the numbers agree with the sidebar.
+- **`PersonCell` renders its own table cell**, so its cap and truncation can't be left off; `PersonChip` is the inline form.
+- **`DateTimePicker timeZone` edits in the named zone.** A wall-clock time the spring change skips moves an hour later; a repeated autumn hour takes its first occurrence (what `@date-fns/tz` does).
+- **Left for later**: a multi-pick with reserved height, `Field limit`, `Textarea autoGrow`, `Modal` scrolling inside 720 px and `initialFocus`, toasts placed clear of the header, `LeaveGuard` asking with the admin's dialog, duplicate `confirm()` calls, an admin `CommunityMembersTable`, `CopyField`, and a code well (ALL-2511). Lint on literal colours in `style`, once on this list, came with the chart kit.
+
+## Trial page: Home
+
+All agent judgement; the user was asleep and has not seen these.
+
+- **Home's files are `apps/admin/src/pages/home/`**, the page and one file per stats panel; `components/stats/` and `pages/StatsPage.tsx` are gone. The panels' data hooks stay in `src/lib`.
+- **The queue list waits for every count, then appears once.** A queue whose count could not load keeps its row, saying so, with its button: a failed count is not an empty queue. The row shows the exact number, where the sidebar's badge stops at "99+".
+- **The stats sit in five sections after the queues: Organization stats, Members, Tasks, Invites, Daily activity**, Members, Tasks and Invites each link to the place that holds their full data; Organization stats and Daily activity have no such place. The panels' order within a section is the second pass's layout (below).
+- **A stat's controls sit inside its panel, above what they drive**, each a labelled field. The daily range, which today sits loose between two charts and reads as a page-wide filter, is inside the Daily stats panel, the only thing it drives.
+- **Two charts that share one control are one panel**: the cumulative and weekly completion rates share a date range and one "Absolute" checkbox (today the checkbox is drawn twice), and the cohort lines and the cohort grid share a week range.
+- **The two tables are always shown and scroll inside their panels**, where today each sat behind a toggle. Task stats links each task to its record.
+- **A rate is a plain number.** Today's task table coloured the completion rate green, yellow or red, which is a status by colour alone.
+- **Chart marks take token colours** (`success` for completed and active, `danger` for churned, `warning` for withdrawn, `info` for in progress, `cat-1` and `cat-3` for email and text). The cohort grid's red-to-green ramp and the cohort lines' spectral ramp stay computed scales: there are no tokens for a ramp, and each cell carries its number.
+- **A date the server sends without a time shows as that date** (`cohortDate`, formatted in UTC). Today a cohort's week shows a day early west of UTC.
+- **"Completions throughout week" is still `components/ActionCompletionCurveChart.tsx`**, with its old look: the task record uses it too, so it belongs to the system owner. `CompletionRatePanel` and `CohortCompletionPanel` draw with `components/time-series-chart/` directly, inside the admin's panel, for the same reason.
+
+## Chart kit and Home's second pass
+
+All agent judgement; the user was asleep and has not seen these. They replace the trial's chart colour and "Completions throughout week" decisions above.
+
+- **Charts have their own tokens.** Six series colours (`chart-1` to `chart-6`) whose neighbours alternate dark and light at 3:1, so two series side by side differ in grayscale (WCAG 2.2 SC 1.4.11 and technique G111, which the ux-guidelines chart item cites); a seven-step sequence (`seq-*`) for an ordered set of lines; a seven-step heat ramp (`heat-*`) for filled cells, with text that reads on each step. Status colours colour a series only when it is that status, so Home's churned members, withdrawn members and in-progress tasks no longer borrow danger, warning and info. A running task's expected bar is hatched instead.
+- **The kit is `src/ui/charts`, and the panel pieces are in `templates/Overview.tsx`.** The shared line charts moved there from `components/time-series-chart/`, rewritten on tokens; `TimeSeriesChart`, the old card around them, is gone, its empty and loading text now each caller's `ContentState`.
+- **A chart on the kit draws at its real width**, not a fixed 1000-unit picture scaled to fit, so axis text keeps its size in a half-width panel.
+- **Every chart on the kit can be read without a pointer**: the chart takes focus and the arrow keys move through its marks (up and down change line on a multi-line chart, and rows on the task bars); the cohort grid is a table with one tab stop. This goes past today's page, whose detail was hover-only. The invite funnel is not on the kit: a fixed picture whose numbers a screen reader doesn't hear, as today (ALL-2509).
+- **A range change keeps the chart, dimmed and marked "Updating…"**, where the trial showed a skeleton. The inventory's "loading, not none" still holds: nothing reads as empty while the new range loads, and a range that had nothing keeps the skeleton.
+- **"Completions throughout week" is redesigned on the kit**, as "Completions through the week", in a `Panel` with labelled controls: "Show" (Cumulative by hour, By day), "Task" (All tasks), "Shortest run (days)" and "Longest run (days)", "Clear duration". The task record shows the same panel. With every task shown each task's line is a muted context line under the average; one picked task takes the second series colour.
+- **The organization's churn tiles read their own six-month history**, so the Members over time range no longer changes them. A tile whose number is still loading or failed says so in its note.
+- **Daily stats' cumulative columns say "(total)"**, the task bar tip says "Completed of joined" for its rate, and an empty tenure cohort shows "—" for its rates.
+- **Home stays one page, stats under the queues, laid out to scan**: Time to churn beside Task completion and churn after joining, Recent missed tasks beside Member reliability, and the two completion rate charts side by side, each half the width; wide time series, the cohort grid, task bars and tables keep the full width. The page is about 10,000 px at 1280 wide, from about 12,000.
+- **Lint reports colour literals in `fill`, `stroke` and `style`, and fixed lengths in `style`.** A value computed from data passes; the static parts of a template string are what the rule reads.
+
+## Home joined to the revised system
+
+All agent judgement; the user was asleep and has not seen these. They replace the daily stats and tile lines of the section above where they differ.
+
+- **Home's words follow the server** (`server/src/analytics/`). Daily stats is one snapshot a day (`analytics.service.ts`, `calculateDailyStats`): tasks completed, anonymous form responses, invites created and invites accepted are totals to that day and say "(total)"; "Members signed (total)" was the members with an active contract that day and is now "Active members", beside "Suspended members". "Last month churn" is "Churn in the last 30 days" (`apps/admin/src/pages/home/contractStatusHistory.ts`, computed in the admin from the history endpoint). Recent missed tasks, Member reliability and Time to churn say what their endpoints count (`getMissedActions`, `getMemberReliabilityWindow`, `getTimeToChurnSamples`).
+- **Every stat tile has a note saying what its number counts**, replaced by "Loading…" or "Couldn't load" while its query loads or after it fails, so the row is one height in every state.
+- **A panel whose background refetch fails keeps its chart and shows `RefreshFailedBanner inline`.** Time to churn hid its histogram on a failed refetch before; it now follows the guide.
+- **The three panels staff load with a button** (Recent missed tasks, Member reliability, Task completion and churn after joining) **still replace the earlier result with the failed state when a reload fails**, as today's tests require: the reader asked for a fresh answer, and the old one beside a failure would read as it.
+- **Skeletons above the Tasks section have their content's height**, so nothing in the first screens moves when the stats land. Cohort completion, the task bars and the task table are as tall as their data, so what sits under them still moves on first load.
+- **A failed recalculation shows in its panel with "Dismiss"**, not as a toast or a page banner: the button is in that panel.
+
+## Trial page: Activity › Scheduled jobs
+
+All agent judgement; the user was asleep and has not seen these. Built from `apps/admin/DESIGN.md` alone as a trial of the guide.
+
+- **Scheduled jobs is a table, one row per job, edge to edge**, where the prototype has a card of rows: the guide puts a List's table on the page with no card. Columns: When (Pacific time), Job, Task, UTC, Members.
+- **The Pacific time of day is shown.** Today's page computed it and showed only the day, leaving the time readable only from the UTC string. The UTC timestamp keeps its own column, since today's page shows it and the prototype's Comfortable density hides it.
+- **The kind badges are neutral**, where the prototype colours Suspension as a warning and Forum auto-complete as info: a job's kind is a category, and the guide keeps those colours for their meanings.
+- **The member count is the row's expand control** ("9 members", `aria-expanded`), and a row click does not expand. Expanded rows are not in the URL.
+- **A failed refetch keeps the loaded jobs and adds a danger banner with "Try again"**, as today's page kept its timeline beside the error; the guide then said only that a failed refetch keeps its content.
+- **The header says the list covers the next 7 days.** Today's page said "in this window" without saying which. The window stays fixed, with no control and no search, as today.
+
+After the judge's verdict and the revised guide, still agent judgement. They replace the trial's columns and time-of-day entries above where they differ:
+
+- **A suspension shows the day it is due by ("By Wed, Nov 25"), not a time.** The endpoint looks for suspensions every 6 hours counted from the moment the page asked (`actions.controller.ts`, `getSuspendPlans`), so the time it returns is the first look that found the members due, and the suspension can come up to 6 hours sooner. The sampled time, in Pacific time and UTC, is the cell's tooltip.
+- **A forum auto-complete keeps its time to the minute.** The server's date is 5 minutes before the task's deadline and its worker runs every 5 minutes (`forum-action-completer.worker.ts`), so the job runs within 5 minutes of the time shown; the tooltip says so.
+- **The UTC time is the When cell's tooltip, formatted ("Thu, Nov 26, 4:55 AM UTC")**, replacing the UTC column and the raw ISO string: the guide puts a fact the prototype hides in a tooltip or a detail row.
+- **The count sits in the description ("… soonest first. 5 jobs.") and the page has no filter bar**, as the guide now says for a list with nothing to filter. It is left out while loading and when there are none.
+- **A suspension row is keyed by its members and a forum row by its task**, so a row stays open across a refetch, which moves every suspension's sampled time.
+- **The empty state says no member is due**, since the server leaves out a job with no members.
+
+## Trial page: Content › Media
+
+Agent judgement throughout; the owner was not asked.
+
+- **The Image upload tab is a Settings form body with no filter bar, and only the Videos tab fills the frame.** The template map gives a place whose tabs differ in kind the List's header and tabs, and each tab the body of its own template; a filter bar over an upload form would filter nothing.
+- **Replacing a video's content asks first**, where today it had no confirmation: the server deletes the video's current files, and whoever plays the video gets the new ones. It is the Confirm level, not a typed phrase, since it notifies no one.
+- **Both upload buttons stay enabled and say what is missing when pressed** (no file; no `.m3u8` playlist), where today's Upload did nothing without a file and today's Replace was disabled without a reason. A refused upload or replacement stays in the form's save bar; today the replacement's refusal was a toast only. The bars say "Uploaded" and "Replaced", and a successful upload has no toast, since the image and its link appearing is the confirmation.
+- **The uploaded image's link sits in a read-only field with a "Copy link" button.** Today the URL was plain text to select by hand, and getting that link is the page's whole purpose. The file picker offers images first (`accept="image/*"`), which the server already required.
+- **The Videos list gained a search by filename** (`?q=`), the one filter the guide allows everywhere, and its delete is a labelled button asking through the admin's dialog with today's sentence about the files staying in storage. Opening a video is the filename's link; the row itself is no longer a click target.
+- **The video record has a side panel for its five facts and no delete of its own**, as today: delete stays on the list. Its breadcrumb gains a "Videos" step, since the place's own crumb leads to the Image upload tab. An id that isn't a number reads as not found, with no request for it.
+- **The record's order is player, files, replace**, where today's was player, info, files in a scrolling box, replace: staff look before they replace, the facts sit beside the player, and the files table runs its full length, so no region scrolls inside the page. The first build put replace above the files; the trial's judge moved it back.
+- **The files panel is "HLS files" and counts files**, where it said "HLS segments": the server lists every stored object of the video, the playlist included (`getVideoDetails` in `server/src/videos/videos.service.ts`). The replace form's field is "Replacement files", so the page has one thing of each name.
+- **A failed delete names its video by id** ("Couldn't delete video 36.", or "Couldn't delete video 36: " and the server's reason), since most videos share the filename `output.m3u8`. For the same reason each row's Delete is labelled with the filename and the id.
+- **After a delete, focus goes to the next row's Delete, else the previous row's.** When the last video goes, or the last one the filter shows, there is no row and the list has no add control, so focus goes to the search field, never to the page's body (ux-guidelines).
+- **The page says videos are "uploaded in video blocks"**, not "to forms": the video block is a display block, and the upload endpoint doesn't record where the block sits.
+
+## Trial page: Content › General updates
+
+All agent judgement; the user was asleep and has not seen these. Built from `apps/admin/DESIGN.md` alone as a trial of the guide.
+
+- **The list is one table grouped by schedule state** (Draft, Active, Scheduled, Expired, today's groups and order), each group under a heading row holding the status badge and a count, with a search by name in `?q=`. Dates show in Pacific time with the zone named, as the guide asks of events; the form edits them in Pacific time too (below).
+- **The record keeps today's two tabs, Details first, as `details` and `content`**, so old `?tab=` links still open the same tab. No side panel: the Content tab is the block editor and needs the width, so status is the header's badge and the dates and suites its description line.
+- **New general update stays a page at `/content/general-updates/new`**, not a dialog: the form has more fields than a dialog takes, and the suite page links to it with `?suiteId=`.
+- **The details form is one section with one save bar.** The priority link moved to the header as "Manage priority". Cancel is gone: Discard resets the form and the breadcrumb leads back.
+- **The schedule fields and the manual cohort picker stay rendered, disabled with the reason, when a suite or an unticked box means they aren't used**; today's form hid them. The picker takes `disabled`.
+- **The details form gained a leave guard** (`allowSamePath`, since its state lives above the tabs and survives a look at Content), a required-title message in place of the browser's bubble, and a save bar note saying what a save does for members: an Active update's save reaches them at once. An Active or Expired update (below) also carries a standing banner saying so on both tabs, since the editor on Content has its own save control.
+- **A missing general update reads as "not found" when a fresh list lacks its id.** The server answers a missing id with a 500, so today's not-found message could never show; the 500 itself needs a server fix.
+- **Not fixed, needs another area:** `components/GeneralUpdateCard.tsx` stays for the suite page, which still uses it.
+
+After the page trial's review (agent judgement, the user asleep), these replace what the bullets above say on the same points:
+
+- **The form edits dates in Pacific time, as the list and header show them**, through `DateTimePicker timeZone`; the form holds each date as a UTC instant.
+- **Emptying a date clears it.** Without a suite the save sends `null` for an empty date, which the server stores (checked against the running server); left out, as before, the server kept the old date while the save note said the update was hidden. With a suite the dates still stay out of the save.
+- **The page says what the server does with an update, which is not what its old copy said.** From its start date every signed-in member can open an update under General updates, whatever its tags, cohort or end date (`findAllGeneralUpdates`). Tags, the manual cohort and the end date decide only whose home page carries it (`findUnreadGeneralUpdates`): the manual cohort replaces the tags, and a tagged member also needs a contract active through the update's dates. A suite sets the dates from one of its tasks, its Members taking action event and the event after it, and only once that task has them (`syncGeneralUpdateDatesForSuites`).
+- **The standing banner shows on Expired updates as well as Active ones**, since members still open both and a save reaches them. Its status comes from the cached list when the record itself is still loading, so the banner's line is held only on a direct visit.
+
+## Joining the foundation
+
+The reviewed foundation, the system fixes after the trial, the chart kit with Home, and the three other trial pages were built on six branches and joined into one line. All agent judgement; nobody was there to ask.
+
+- **Where the review loop and the system fixes changed the same lines, the system fixes' text stands.** A leader's role is plain text (the loop had made it a neutral badge; both drop the accent), and the guide's rules 6, 7 and the Confirmations table are the trial's rewrite, which already says what the loop's edits said.
+- **A group write's failure is the caller's to show, with no `report` switch.** The loop's round 4 added `report: false` for the Add dialogs; the system fixes had already stopped the membership hook reporting at all, which covers it, and round 4's test stays with the new wording.
+- **The chart kit's "Hold a delayed skeleton's space while it waits" commit is gone**: the system fixes made the same change, so it was empty after the join.
+- **A List's table with no filter bar above it starts 12 px below the header** (`ListContent`, when it is the body's first child). Scheduled jobs, a List with no filter bar as the guide prescribes, had its description touching the table header. `Page` is unchanged, so Overviews, Records and lists with a filter bar don't move.
+- **A reload staff ask for with a button is not a refetch**: its failure replaces the earlier result. Home's three button-loaded panels do this, as their tests from before the redesign require.
+- **Rule 11 names the member app's endpoints too.** General updates' admin handlers said nothing false; the list every member reads did.
+- **Left open for the system owner**: a linked `PersonChip`; a tooltip a keyboard reaches on static text; `formatDateTime` in UTC ending "GMT+0"; `listCount` without `shown`; a `useFocusAfterRemoval` hook; a helper for "Couldn't X: reason" that keeps the row's name; `generalUpdateHref`; `Page` accepting `title` beside `place` and ignoring it; `StatTile` holding its note line; `RefreshFailedBanner` for several queries; `templates.test.tsx` at its 500-line ceiling (add to `pieces.test.tsx`); all filed as ALL-2511.
+
+## Foundation: trial and hand-over to the fan-out
+
+Agent decisions by the foundation's lead; the user was asleep.
+
+- **The reference page is Members › Groups** (`apps/admin/src/pages/groups/`): a list with URL-bound tabs, a queue, a record with tabs, dialogs and confirmations, small enough to read whole.
+- **The trial was four pages, not three**: Scheduled jobs (a plain list), Media (tabs of different kinds and a record), General updates (a list and a record whose saves reach members) and Home (the dashboard). A judge compared them with the reference page. All five were kept with fixes and none rebuilt; the pages agreed wherever the guide spoke and split wherever it was silent, so the fixes went into the guide, the templates and the components, and the trial pages were then brought up to the revised guide by fresh agents.
+- **Three of five builders wrote copy about the server without reading it.** The guide now requires reading the endpoint before describing a time, a count, a consequence or what a save does, and reviewers check it.
+- **`modern-admin` at `a4d3e65674` is the base the areas branch from, and it is not rewritten after that.** The review loop folded fixes into their commits for the 26 commits up to `db034dd5da`. For the 42 commits after it, and for everything later, a review fix is a new commit on top that names the commit it answers, because rewriting history under dozens of area worktrees would cost more than tidy commits are worth in a PR this size. Split, reorder and message findings on those commits are dropped for the same reason.
+- **From the third review round, a finding is fixed only if it is a real defect** in behaviour, accessibility, a guard, a lost capability, a commit failing checks alone, or the guide being untrue to the code. Wording, nits and missing tests became Linear follow-ups in "Modern admin" or drops, each with a reason in the loop's ledger. Without the bar the rounds were not converging in the night the build has.
+- **The guide is past its 400-line target** (559 lines). What was added is what the trial showed builders guess differently; cutting it back is left for after the fan-out, when it is known which rules the lint and components could enforce instead.
+
+## Fan-out: system owner
+
+Agent decisions by the system owner, the one writer of the admin's tokens, `src/ui`, shell, places, routes, lint and guide while the areas were rebuilt; the user was asleep.
+
+- **Models:** from the afternoon of Nov 25 the agents that write feature code run on Sonnet 5.5 at the user's request, and leads, reviewers, fixers, judges and integrators on Opus 5.5; from 08:20 that day everything else ran on Opus 5.5 (usage), so later units got same-model review in a fresh context. Review findings are compared by the writing model, results in `EVIDENCE.md` at the end. This updates **Models** and **Cross-model review** under Process.
+- **Rename edge cases:** the project record's tab id `task-updates` became `project-updates` with the label, and `/content/task-updates` redirects to `/content/project-updates`; "Action updates" and "Task updates" stay palette aliases. Code identifiers (`taskUpdateHref`, `RecordId.TaskUpdate`) keep their names, since they name the server's entity.
+- **One searchable option family:** the command palette, `CommandList` (pick an action, in a popover) and `Combobox` (hold a value) share one option row and filter (`ui/option.tsx`). The prop for an option's second line is `detail` everywhere, not `description`.
+- **`<Table stickyActions>` is opt-in** and draws the actions column's left rule always: CSS can't tell when a table overflows without script or scroll-driven animation, which Safari lacks, and a table that opts in is one that overflows.
+- **`ModalFooter` doesn't move focus to a failed write itself:** a status message reaches screen readers without moving focus (ux-guidelines), and `InlineError` is already an alert. `errorRef` serves a dialog whose focused control is gone. `Modal finalFocus` is used only when the opener has left the page. The exception is a dialog following #1091 (ALL-2474), which moves focus to a failed save's error, as the members' away dialog does.
+- **Restyled toasts were not built:** the toast's look lives in `sharedweb`, which the fan-out may not change. **Home's length:** a proposal only (in-page links), for the owner.
+- **`GroupPage.test.tsx` carried a temporary length waiver** while the foundation's review kept adding to it, since splitting it then would have conflicted with each fix; it was split by area once that review ended.
+- **Review stop rule (owner's choice, Nov 26):** a review loop stops after a round with no HIGH-severity finding; that round's remaining bugs and follow-ups go to Linear "Modern admin", one issue each linked to the commit, instead of another fix round. A round with a HIGH finding still gets its fix and another round, and reviewers still report everything. The owner said "don't care … probably a", and root chose (a), to finish within the weekly usage budget.
+- **Models from Nov 26 (root's cost-benefit call, left to it by the owner):** Sonnet 5.5 at medium effort runs the per-commit check runners, the monitor and the review analyst's daily run, whose mistakes are cheap to catch. Review hubs, rebases and ports, fixers, reviewers, leads and every builder stay on Opus 5.5: a hub that misjudges whether a round is due costs a full Opus round or skips a needed one, a bad conflict resolution costs a review round or ships a bug, and Sonnet's code drew about 3.6× Opus's bugs per 100 lines in the trial (small sample). This supersedes the Nov 25 afternoon move of builders to Sonnet.
+- **`ContentState` derives its states from the query** (`things` + `query`, or `parts`), and **two lints** (`admin/page-height`, `admin/test-clock`) were added, because the review analyst found these defect types recurring across areas: load versus refetch failure mixed up (about 11 bugs), pages re-solving the shell's height (about 7), year-dependent test dates.
+- **A guarded form names the search params it survives (`useLeaveGuard` `ignoreParams`)** rather than same-path navigation being allowed by default: a tab that unmounts the edited form must still ask. The API is the members area's, adopted from its branch.
+- **Areas' edits to system files were adopted, not reverted:** members' `PersonCell onOpen` and `ignoreParams`, tasks' typed-phrase focus fix and members' `SaveBar disabled` patch landed on `ma-sys` as written or nearly, so each branch rebases cleanly.
+- **Escape with a combobox's list closed keeps the picks**, departing from Base UI's and the ARIA pattern's "Escape clears": one stray key would otherwise wipe every pick unseen.
+- **`UserSelect` keeps its row grid for several picks** rather than chips: about 20 callers and the cohort pickers hold hundreds of members.
+- **`fromApi` keeps a refused request's status:** `R.fromPromise` without a mapper turned the API's error into a plain `Error`, so pages showed the fallback instead of the server's reason.
+- **Declined:** a tree primitive (one caller, the builder), `ForceGraph`'s keyboard selection (the members and growth areas own it), a mono section title (no clear use).
+- **Tags are about to be retired (owner, Nov 26),** so any tag UI an area still builds stays minimal, and the members list drops its Tags column. **The role badge is the member app's own:** the members list shows the profile card's role badge, moved unchanged from `apps/frontend`'s `UserProfileCard` to `sharedweb/ui/RoleBadges.tsx` and re-exported as `ui/RoleBadges` (`fanout-lead.members-roles`), with staff shown alone as in the member app, after a neutral `ui/Badge` reading "Admin" for an admin, since the member app has none. An admin-only `ui/RoleBadge` in tinted role hues was built first and removed once the shared badge landed. Its white text on the role colours measures 1.9–4.3:1, under WCAG's 4.5:1, which ALL-2699 tracks.
+
+## Area: activity
+
+All agent judgement; the user was asleep and has not seen these. Covers Activity › Event log, Research › Kora participants (with the assignment record and the transcript preview), Settings and Login. Every agent, reviewers included, ran on Opus 5.5, so the reviews were same-model in a fresh context.
+
+Event log:
+
+- **The type filter offers all 17 server event types, in label order**, not the server's enum order, so no unused type gains prominence by position. Labels are written for staff ("Text opt-out", "Task comment", "Forum reply not notified"); the rest are their names in sentence case. A streamed event of a type this build doesn't know shows the server's raw name instead of failing.
+- **New events wait while staff are reading.** With the list scrolled off its top, the pointer over it, focus inside it or a row open, arrivals are held behind "Show N new events", which scrolls the list back to the top (smoothly; instantly under reduced motion). Changing the type filter also returns the list to the top.
+- **A header badge shows the feed's state** (Live, Connecting, Disconnected, Not live), which today's page did not show.
+- **Every row has Details** (full message, exact time, data), not only rows with data. Type and page live in the URL, and an unknown value falls back to the default.
+
+Kora participants:
+
+- **Two tabs.** Participants holds totals, signups per day, search, both tables and the export, as three panels under one search. Assignments holds, in order, project status, transcript batches with upload, history, notices, conversations and results: the controls first, then what informs them. The assignment record has no side panel.
+- **A batch's badge reads Open, Closed or Retired**, not "Assigning": whether pairs are handed out also depends on the project status shown above it. Closed means its closing time has passed, by the rule the server assigns from.
+- **The closing date is changed in a dialog** opened by "Change…" beside the date, where today's inline input grew a Save button after an edit. On a narrow table "Change…" wraps under the date rather than moving into the row menu.
+- **Retiring an already-closed batch** no longer says it will stop being assigned; it keeps "Its pairs not yet rated leave assignments in progress", which `dropUnrated` makes true whatever the closing date.
+- **Both notices ask for the typed phrase for real people** (`notifyRealPeopleText`), since waitlist participants are not all members, and keep "Messages can't be recalled once sent". The "there's more" notice describes reviewers who finished an assignment, have none unfinished and haven't been told, matching the server's query.
+- **The empty batches panel says the project can be made Active once it has transcripts**; uploading does not make it Active.
+- **The transcript preview stays full screen** with a slim admin bar above KORA's review tool, which is mounted, not edited.
+
+Settings and Login:
+
+- **Send test push confirms with a plain dialog naming the member**, not the guide's typed phrase for notifying real members: it reaches one member, and the realistic mistake, picking the wrong one, is what the dialog names. The alternative was the typed phrase.
+- **Send test push validates on submit** ("Choose a member", "Enter a message", focus on the first) instead of disabling its button, as the guide says for a form; the two checks are today's.
+- **A send reads as a send, and only Expo's ticket counts as sent.** "Sent: Expo accepted it for delivery", not "delivered", because the server has only Expo's ticket by then; a 200 without an ok ticket is a failure ("The server's request to Expo failed; the server log has the reason."). A server error says "The server hit an error sending it." with no "Try again", since it repeats (ALL-2533). An earlier response stays visible, muted and labelled as earlier, while a resend is in flight or after it fails.
+- **Login keeps its layout, copy and behaviour, with the nearest tokens for its colours**: the button is `fg` rather than pure black, which the lint bans, and the banner is `danger-soft`/`danger`, so both look slightly different. Its earlier defects (ALL-2545–2547) were left alone because Login is to stay as it is.
+
+Review:
+
+- **Small findings became Linear issues in "Modern admin" rather than more rounds**, under the stop rule: ALL-2528, ALL-2531–2533, ALL-2545–2547, ALL-2567, ALL-2568, ALL-2576–2578, ALL-2598, ALL-2626–2628. The Event log's browser checks from its third review round on ran against a mocked API, because the local server could not start (expired AWS login); the integration's checks of Settings and Kora ran on the real stack.
+
+## Area: members
+
+Agent decisions by the members area's lead and its page agents, for People, the member record and its side peek, Tags, the Welcome queue, Member lists, Clusters and the Friend graph; the user was asleep.
+
+- **People is one place with tabs All, Staff and Away, and All has a Map view.** The four old pages (`/members`, `/staff-directory`, `/away`, `/member-map`) and `PeoplePlace` are gone. The old card view folded into All's table: a Tags column, and contract, tag editing and each task's record in the expanded row, rather than a third view.
+- **A plain click on a member's name opens a side peek** (`MemberSheet`, `?member=<id>`, pushed so one Back closes it, even after switching members or changing a filter while it is open); the name stays a link, so a modified click opens the full record. The peek is the non-modal `Sheet`, so the list beside it stays usable, and previous and next buttons step through the list's rows. Closing returns focus to the name that first opened the peek, not the member last shown (a `Sheet` focus option would change that; a follow-up for the system owner).
+- **People › All holds its rows' first order:** the table stays in its loading state until the data its order and filters need (time spent, task records, contact details, and tags when a tag filter is set) has loaded or failed, so a click never lands on a row that moved.
+- **The member record has five tabs, Texts first** (Texts, Tasks, Membership, Notifications, Profile) and a side panel of standing facts. Form responses moved under Tasks, and "Invited submissions" is called "Form responses". On the Tasks tab, recording an activity is in each task row's More menu, and each task's phase sits under its name and its last activity under its status, so the table fits beside the side panel at 1280 wide. Granting or removing admin and recording an activity now ask first.
+- **#1091's away-period rules hold on the record and the peek:** the away dialog stays a dialog with Save and Cancel visible at 1280×800 and 1024×768, its dates show in full, and focus goes to Start on open, back to the opener (or "Schedule time away…" when the opener is gone) on close, and to the error on a failed save. That last move is an exception to DESIGN.md's rule that an error takes focus only when the focused control is gone or disabled (asks/members-07).
+- **Staff directory edits are guarded:** leaving the Staff tab with unsaved edits asks first, while opening or stepping the peek doesn't (`useLeaveGuard`'s `ignoreParams`, now the system's API). Save stays disabled while any staff save runs, so two saves can't overlap.
+- **Copy about consequences was checked against the server and corrected where it overclaimed:** deleting a tag says task audiences and form checks will treat every member as not having it; the empty Welcome queue says no one is waiting for a welcome, not that everyone has been welcomed. A tag that a general update, project update or reminder group uses still can't be deleted, and the server answers 500 (ALL-1441, commented); the page's fallback names that as a possible cause.
+- **Additions the inventory allowed:** a name search on Member lists and Clusters (Clusters also matches member names), the Welcome queue's Staff liked filter in the URL, Shuffle's seed in the URL, Tags listing each tag's members, and an empty member-list name refused on the page.
+- **The Friend graph is a workspace with an inspector.** Its friendship count counts drawn, de-duplicated pairs; when friendships fail to load the summary leaves the count out. Graph nodes still can't take keyboard focus, as before; each member's friends are on their record (asks/members-07).
+- **Shared components restyled here keep their paths and props:** `FailedLoadsBanner` (now a danger banner; its ignored `className` was removed when tasks landed) and the force-graph filters (labels above their selects), so the tasks overview and the invite graph change look (`$B/fanout/mounts.md`).
+- **Review:** every commit went through the review loop with same-model (Opus 5.5) reviewers in a fresh context, as all agents ran on Opus from 08:20 Nov 25; the peek's wiring commit was written by Sonnet 5.5. Findings below the fix-now bar were dropped with a reason in the loop's ledger.
+
+## Inbox: the text conversation
+
+Agent judgement in the review loop; the user was asleep.
+
+- **A failed mark shows in the conversation it was made in, and as a toast once staff have left it.** The member record keeps one conversation mounted across members, so a banner not tied to its number showed one member's failed opt-out inside the next member's texts.
+- **The conversation's "Mark opted out" confirm closes when its conversation changes, not when the path does**, so it takes the section's own signal rather than `useConfirmOnPage()`: an inbox pane may switch conversations without a new path, and the same signal decides whether a failed mark shows as a banner or a toast.
+- **The thread page is at least the window's height, its history scrolling between the strip and the composer, with a floor under the history**: when the history, a long draft and a warning don't fit the window, the page grows and scrolls rather than squeezing the history to nothing or cutting off the composer.
+- **An open thread's header has the phone number under its members' names**, and nothing under a non-member's number, which is its title: the queue's description there read as a statement about that contact.
+- **The All tab's search takes at most 40 characters, as the old box did (`maxLength`), and says "Search by at most 40 characters." instead of searching a longer one from the URL**, which `maxLength` doesn't stop; the server refuses a longer search.
+- **A thread opened from the All queue has an "All" crumb between "Inbox" and its name, linking back to All with its search and page**; from Needs reply, "Inbox" alone leads back, since that queue has nothing else in the URL. `Page` builds the place's crumb from `places.ts` without the URL's search, so the queue's own crumb carries it.
+
+## Area: inbox
+
+Agent judgement by the inbox area's lead and its page agent; the user was asleep.
+
+- **Needs reply and All are queues of one Inbox Workspace, with the open thread in the pane beside the list**: `/inbox` and `/inbox/:threadId` sit under one pathless layout route that holds the list, so opening a thread never remounts or scrolls it. The thread page's "All texts" link is gone: the breadcrumb and the list beside the thread replace it.
+- **The page's `h1` and browser tab name the open thread's contact**, and "Inbox" with none open.
+- **The Needs reply explanation sits behind an info button in the queue bar**; its first sentence is the page description.
+- **The All tab's search runs as staff type, kept in `?q=`**; an old bookmarked `?search=` link shows the whole list. Searching on every keystroke is ALL-2611.
+- **A failed refresh of a conversation reads "Couldn't refresh texts." with "Try again"**, in place of "Reload to see the latest.", since the button does the reload.
+- **The inbox's review loop stopped after round 7**, the first round with no HIGH finding once the owner's stop rule applied; round 7's two tested fixes were not re-reviewed. The conversation at a 1024 px window is ALL-2610.
+
+## Area: projects
+
+Agent decisions by the projects area's lead and its units (Tasks › Projects list and record, Formulas list and record, Contracts list and record); the user was asleep.
+
+### Projects
+
+- **Standalone tasks stay on the projects board**, after the projects in each section, so no task loses its place on the board.
+- **"Schedule release" is reachable only from a row's More menu, not foregrounded**, per the owner's no-prominence instruction for that flow.
+- **A draft's Start staff testing is the first item in its More menu**, disabled until the draft is ready, with "Needs N" beside the phase badge and the menu item naming what is missing. As a row button it was pushed off the panel at 1280.
+- **A card's mini timeline runs to today only while some task's last phase is still open**, so a finished project doesn't look ongoing.
+- **On standalone-task cards the badge sits under the name and names wrap to two lines**, because single-line names were cut to about 82 px.
+- **Project record tabs are unchanged** (Tasks by suite, Timeline, Project updates); the side panel adds a Suites list.
+- **The record's tasks table puts phase and dates in one column, files won't and dismissed under Completed, and gives the Task column a 192 px minimum**, so it fits beside the side panel at 1280.
+- **The per-task slug is dropped from the record's tasks table**; it is on the task's own page.
+- **Retention shows as text in the tasks table; the funnel bar stays on the board card.**
+- **"N% of previous" shows only where the compared task is the row directly above**, since beside any other row it compared the wrong steps. Each row shows its number in the project's order, and row labels add "task N" where task names repeat.
+- **Name and slug are edited in one dialog from the More menu** instead of inline pencils, and project dialogs don't autofocus their name field, which is what lets focus return to the opener.
+- **Remove from project keeps no confirmation, as on `main`, and focus moves to the next row's More, then the previous row's, then Add task.** The page agent's stated reason, "reversible, reaches no member", is wrong: members lose the project name shown on that task. ALL-2636 proposes an Undo toast.
+- **Focus after Remove from project stays hand-written rather than using `useFocusAfterRemoval`**: the hook focuses a row's first button, which on a draft row is the "Needs" tooltip trigger, not More.
+- **The updates tab has three columns**: Update (with its task as a caption), Status, and Date, with "Sent <date>", "No notification" or "Not sent yet" under it, rather than "Not sent" for updates that never send.
+- **The page loads every task update alongside the tasks and projects and waits for all three**, because `GET /actions/all` omits updates and the "no update posted" flags were firing on tasks that had one. A failed refresh shows one "project updates" banner.
+- **The board and record keep passing `loading`/`error` to `ContentState` by hand** rather than adopting `things`/`query`, since `useProjectsPageData` already treats only a first-load failure as failed, reviewed and tested; moving it is redesign, not port.
+- **The record's row More menus are icon-only**, with the task name as tooltip and accessible name, because `MoreMenu`'s busy spinner widened the Actions column and no fixed width fit at 1280 (the menu's own widening is ALL-2653).
+- **Only one row write runs at a time on the record**: while one runs, the other rows' write items are disabled with "Another change is saving", since concurrent writes raced the list refetch.
+- **Deferred:** ALL-2534 to ALL-2537, ALL-2573, ALL-2574, ALL-2595 to ALL-2597, ALL-2635 to ALL-2638, ALL-2695, including Delete project's pending state in the toast confirm (ALL-2635); for the system owner ALL-2653 to ALL-2657; for the tasks area ALL-2658 (the task page doesn't scroll to `#release`).
+
+### Formulas
+
+- **The list column reads "Used by (formulas)"** because its count covers formulas' reads only, not suite partitions.
+- **A name filter, kept in `?q=`, with a no-results state.**
+- **Delete sits in the page header as a danger-outline button**, not an overflow menu or the form's foot, as the record's only secondary action; the SaveBar says "Deleting…" while it runs.
+- **History is a disclosure card under the form, not a tab**: the record holds one form, and a tab would hide history behind a click without saving space.
+- **The edit form has no maximum width inside the record's main column**, which also holds History; the new-formula form keeps its limit.
+- **Save failures that need Reload (a 409, a failed reload after a save) and failed deletes show as an inline banner above the form; other save failures show in the SaveBar.**
+- **After "Saved, but couldn't load it again", Save stays enabled with "Reload to keep editing" beside it**, rather than being disabled.
+- **The deleted-formula check lives in the page component, not the editor hook**, so one check covers both remount paths; without it Discard after another admin's delete turned the page into a blank "New formula" form.
+- **The formula pages keep `href("/tasks/formulas/:formulaId")` instead of `formulaHref`**, which is typed `number | "new"` while formula ids are UUID strings; the system owner should retype it.
+- **Deferred:** a heading-level prop on the shared formula-fix components for the old member list page (ALL-2530).
+
+### Contracts
+
+- **A contract's text stays read-only after creation**, and the page says so and points to creating a new contract, because `UpdateContractDto` picks only name, dates and description and the whitelist pipe strips `markdown`. Editing before anyone signs, or a "Duplicate as new version", needs the server (ALL-2512).
+- **Copy about what a save does to members is cut to the plainest true fact rather than qualified**, and the guards stay. Review rounds 4 to 9 kept finding gaps in qualified sentences; true but incomplete member copy is not extended.
+- **Start and end are edited and shown in Pacific time ("PT")**, sending the server's instants back unchanged; created times follow DESIGN.md with no zone.
+- **Emptying a date clears it** (sent as `null`, checked on the live server). The Clear buttons were restored because the shared date picker treats a half-cleared date as empty and has no clear control (ALL-2544).
+- **A save that leaves no contract in force is warned about but allowed**, so a contract can still be retired on purpose, as the old page allowed.
+- **A date change is refused until the other contracts have loaded**, since the save note and guards depend on them (fails closed).
+- **A point is required only on a contract that is scheduled or that the save puts in force**, so superseded contracts with no points stay editable.
+- **A point with subtext or admin notes but no point text is refused, not dropped silently**; **an end at or before the start is refused**, although the server accepts it, because such a contract can never be active.
+- **The Active contract's record carries a banner that members are signing it and the public site quotes it**, and the save note names which contract members will be asked to sign after the save, naming the other contract when this one is superseded.
+- **"A task form that names it still asks" stays on existing contracts**, so staff know a live task may still collect signatures.
+- **Fields stay editable while saving, and typing done meanwhile is kept and stays unsaved**, since disabling them would drop focus. The same gap in the explicit-save exemplar is ALL-2641.
+- **The list's Text column shows the first 80 characters of the raw markdown**, as the old card did; plain text needs a markdown-to-text dependency, left for a follow-up.
+- **The record has no side panel**: its few facts fit the description line.
+
+### Process
+
+- **The area was split into three page units (projects, formulas, contracts), built in parallel and review-looped separately**, so each loop reviewed one cohesive unit and none waited on another. They were then joined onto `ma-projects` and rebased onto `ma-sys`, and the port's changes were reviewed as a delta rather than re-reviewing the pages.
+- **Loops stopped under the owner's no-HIGH stop rule**: projects after round 7, formulas after round 4, contracts after round 9 (round 9's small fix was hub-checked, not re-reviewed). Every reviewer ran on Opus 5.5 in a fresh context, so review was same-model.
+
+## Area: growth
+
+Agent decisions by the growth area (Invites, Waitlist, Links, Organizations, Outreach partnerships, Ambassador program, Content › Project updates and Forum posts) while the owner was asleep.
+
+- **Waitlist sends ask for a typed phrase.** A send reaches people outside the admin, possibly thousands, starts at once and can't be stopped (`waitlist-email.service.ts` `send()`). So both Send buttons now use the typed-phrase level with `notifyRealPeopleText`, which `DESIGN.md` reserves for notices to real people. Before, they asked for a plain confirm. Test sends keep the plain confirm. The guide's operations table doesn't list this send yet; that is for the system owner.
+- **Outreach partnerships keep the server's newest-first order.** Responses with no note carry a "To review" badge, but they are not sorted first. The spec declined a "Pending response" view, and today's page has no such order. Partnership responses as a queue with a count are the sidebar's, through `useQueueCounts()`.
+- **Share links list every link under group rows** (one table, one group row per target), not collapsible cards. The tab's search narrows a long list. Collapse can come back if staff miss it.
+- **Signups show on every share link the server credits,** not only invite links: signup attribution records the share URL for every link kind a member owns (`auth.service.ts`). Campaign-owned links show "—", since a campaign resolution records no share URL.
+- **Links edits are dialogs,** one per row action, so each edit has an explicit save, a refusal beside it and room for a consequence note. The owner of the share links shown (member or campaign) is URL state, like a filter. A new campaign's picture uploads on "Create campaign", not on pick, so an abandoned dialog uploads nothing. The task picker is the system owner's `Combobox`.
+- **The Edit label help depends on the link:** members see and can edit the labels on their own invite links (`invite-share-urls.service.ts` `findInvitesForUser`), so only other links say "for staff only".
+- **The Live feed tab is a table inside the shell; Full screen keeps today's chromeless sentence list** for a shared screen, with a new "Exit full screen" link back to the tab. The tab and full screen share the feed settings (same localStorage key as today).
+- **Invites per member is a sheet** opened from the filter bar, and its first count is the invites created in the member's name (the server counts every non-deleted invite, sent or not). The invitee links to the admin member record, not the member-site profile.
+- **Invite graph:** the inspector shows the selection first, then filters, then the legend. Its counts up and down the chain leave out the synthetic "No attribution" hub.
+- **Waitlist:** rarer bulk actions sit under one "More" menu on the bulk bar. A row's spam toggle moved into its "More" menu, leaving "Signup invitation" as the row's one visible action. The composer opens above the table inside the list, so preview and selection stay side by side, and opening it brings it into view. The Metrics toggle is not URL state. The Emails tab's date column is "Started", when staff confirmed the send. Filter, sort, page and cohort are URL state.
+- **Organizations:** New organization is a dialog. With no organization record to open, success closes it with a toast. The Group help says people join the group if it has room when they sign up, as the server's capacity check does.
+- **Ambassador program is a list, not a settings form.** A card's unconfirmed Remove button comes last, so focus after a removal never lands on another member's Remove. Projected growth is program-wide, whatever the search.
+- **Project updates** link to the update's record route through `RECORDS`. The list says to write an update "from its task's page", since the task record's tab name belongs to the tasks area. Forum posts show dates in Pacific time. Stepping between posts replaces history; opening one pushes. The expert picker is disabled, not hidden, while Q&A is off, with its note always visible.
+- **Review:** every reviewer ran on Opus 5.5 in a fresh context, the same model that wrote most of the code (Fable was retired on Nov 25). From round 4, reviews cover only the fix delta, and the loop stopped after round 5, the first with no HIGH finding, per the owner's Nov 26 plan. Its one remaining bug, the New campaign picture help, is ALL-2651.
+
+## Area: responses
+
+Agent decisions by the responses area's lead and its units (forms list, form record, Versions tab, the responses view and its four sub-views, exports); the user was asleep. Units were built on Opus 5.5, except the exports unit and the rebase onto `ma-sys`, which ran on Sonnet 5.5, and all were reviewed on Opus 5.5 in a fresh context.
+
+- **Forms list:** a row opens the form from its name, its task is a separate column linking to the task record, and delete stays a visible per-row button. There is no "New form" button (user requirement); `/tasks/forms/new` stays reachable by URL. Where the forms index names no task, the list shows "—" and the record shows "Form N", because the index doesn't link follow-up forms to their task (ALL-2549).
+- **Deleting a form:** the confirmation lists what the server does: responses, drafts and follow-up forms are deleted, the completions those responses recorded are removed, nobody is notified, and nothing can be restored. A task whose main form is deleted keeps pointing at it, and the form stops loading for members. Nothing blocks that case, because the server doesn't. A form that is a task's variant is refused with a 500 today, which is filed in ALL-1441.
+- **Form title editing is not built:** saving needs the whole schema, so a title-only save could create a new version, which would make every current response show as out of date. Filed as ALL-2542.
+- **Versions tab:**
+  - A version is named `v<snapshot id>`, as in the Responses tab's Versions drawer, and its date reads "First saved". Snapshots are shared across forms by schema hash, so a save that returns a form to an earlier schema reuses that version.
+  - The tab loads alongside the form, without waiting for it.
+  - Reassigning responses is styled as destructive, because the admin can't move them back. Its dialog says that members then see their past answers under the current version's questions.
+  - There is no "Back to responses" link unless `returnTo` is set; the Responses tab does that job.
+- **Responses view:**
+  - The view renders no header of its own; the record's title stands for it, on the form record and on the task record alike.
+  - The four sub-views use a `ViewSwitch`, not a second row of tabs.
+  - A response opens from the respondent's name, not a row click. With the Respondent column hidden, the first visible cell opens the response and reads "Open" when that cell is empty.
+  - "Released {date}" is now "first {date}", since it was always the first response's date.
+  - A failed refresh shows the shared "Couldn't refresh responses … Showing what loaded before." banner, not a toast.
+  - "Copy link" confirms with a toast.
+  - The version and compare toggles use words and weight, not status colours.
+- **Sub-views:**
+  - The PostHog button reads "Watch session recording", since "Replay" was ambiguous inside the Replays tab.
+  - Withdrawals show no time, because the server sends none.
+  - Stats' filter banner is a filter chip with the count.
+  - Questions stays a table with wrapping answers, not cards, so respondent, variant, time and AI score line up beside each answer.
+  - A response's snapshot renders as stored when it fails only a rule added after it was written (`parseStoredFormSchema` in `shared/parsed-dtos.ts`). Only a snapshot with no pages of fields falls back to the current version, under a banner naming the form.
+  - The Replays respondent search is `ui/Combobox`, and the response being shown reads "Showing · date".
+- **Exports (Defect fix list):**
+  - Both exports hold exactly the Responses table's rows, in its order, under its variant, search and version filters, from every sub-view. The menu names those filters ("1 response · Variant: Beta · Search: ann").
+  - The Stats and Replays answer filter narrows the replays only.
+  - Hidden columns still export: hiding a column is a reading aid, and a file missing columns can't be rebuilt from it.
+  - The CSV gains "Submitted at", option labels taken from each response's own version (labels only; the HTML file's toggle still offers raw values), and a "<label> (removed)" column for each question a later version dropped. "(removed)" is shown only where the question really was removed from that response's own form, never because a variant doesn't ask it.
+  - "User Name" is blank when there is no name.
+- **States after joining `ma-sys`:** the forms list, the form record and the Versions tab use `ContentState` with `things`/`query`. The responses view and its sub-views keep passing `loading`/`error` by hand, because one composite hook feeds them (form, responses and a refresh mutation), not a single query.
+- **Review:** the loop ran three rounds, the third reviewing only the delta from round 2's fixes and the rebase onto `ma-sys`. It stopped there under the owner's stop rule, since round 3 found nothing HIGH. Round 3's unfixed bugs are filed in Linear "Modern admin" as ALL-2643 to ALL-2650, among them a variant's removed question no longer reading "(removed)" in the task record's CSV (ALL-2649). Earlier follow-ups are ALL-2549, ALL-2550 and ALL-2551 (since fixed by adopting `useFocusAfterRemoval`), plus a comment on ALL-1441. Its formatting failures were fixed.
+
+## System: the member app's colours
+
+Agent judgement by the system owner's colours node; the user was away.
+
+- **Primary buttons are navy (`primary`, oklch(0.24 0.07 259), the member app's #081e40, 16:1 under white; hover its #0d2c5c)**, as the member app's primary buttons and bands are. The Alliance green is the `accent` everywhere else: the current selection, tabs, the sidebar's active entry, links, focus, checked controls, outline buttons and count badges. Making buttons green instead is one class list in `ui/Button.tsx`.
+- **The accent is the brand green darkened, oklch(0.5 0.14 133)**: the brand green itself is 3.2:1 on or under white and 2.9:1 on the canvas, under AA's 4.5:1 for text and, on the canvas, its 3:1 for controls, so the accent keeps its hue and drops its lightness to 5.6:1 under white and 5.3:1 on the canvas; hover is oklch(0.44 0.12 133), the soft background oklch(0.95 0.045 130). No token holds the undarkened green, since nothing in the admin can use it.
+- **Success moves from hue 150 to emerald, oklch(0.52 0.11 165)**, so a done badge doesn't read as the brand: at hue 150 it was 0.046 from the accent in OKLab, now 0.077.
+- **`html` takes `accent-color` and `:focus-visible` the accent's outline colour in `@layer base`**, as the member app sets `accent-color` on `html`, so pages not yet on the admin's components lose the browser's blue; Tailwind utilities still win over the base layer.
+- **The categorical, chart, sequential and heat palettes are unchanged**: they carry data, not the brand, and leading them with green would put the brand beside success in charts.
+
+## Area: suites
+
+The suites list, New suite, the suite record and its tabs, and Launch, rebuilt on `ma-suites` by a shell unit and four tab units (Tabs, Reminders, Partition, Launch), then reviewed in one review loop of five rounds. It stopped after round 5 found nothing high-severity, under root's stop rule. 28 findings were fixed in the commits they answer, and the rest are Linear follow-ups (ALL-2523, ALL-2581 to ALL-2586, ALL-2613 to ALL-2615) or drops with reasons. All agent judgement; the user was asleep and has not seen these. Every agent ran on Opus 5.5 (from 08:20 at the user's request), so review is same-model in a fresh context, not cross-model.
+
+**Frame and list**
+
+- **New suite is a dialog over the list at `/tasks/suites/new`** (a nested route): it takes a name only, and Create opens the empty suite record. The list behind keeps its search. Cancel goes back when the dialog was opened inside the app; opened by URL, it replaces the entry with the list.
+- **The list shows a one-task suite's task by name** in its Tasks column, and the side panel does the same (38 of 64 launched suites hold one task). `GET /actions/suites` sends no tasks or events, so the list joins the all-tasks list and holds its skeleton until both load.
+- **The first tab is "Timeline" in every state**, not "Overview" while a draft. The body is the same timeline either way: a phase strip led by Draft, then the gantt once any task has an event. A draft's tasks show before it has one.
+- **Reminders get their own tab on the suite record**, beside Timeline, Tasks, Events, General updates, Partition and Launch. `PLACES.md` gives them none, but inventory SU-9..11 needs a home, and reminders stay distinct from updates.
+- **The header holds New task always, and Launch… only while the suite can launch.** Where it can't, the refusal text stands where Launch… would be. A draft suite says "Nothing is visible to members until you launch".
+- **A suite launched for a later members start reads "Scheduled"**, not "Draft", in the list, header and side panel. Its banner says nothing is visible to members until they start, with the time.
+- **A draft gets a separate banner for each thing that reaches members before launch**: a general update already shown to members, or a task whose own members start event, or a general update's future start, opens it without a launch.
+- **The side panel shows only what the suite query gives**: status, members start, deadline, tasks, partition. A suite with no tasks shows "No tasks yet" with New task on every tab but General updates.
+- **The suites list and the suite record wire their loading states by hand rather than through `ContentState`'s derived form**, since a missing suite must read as not found, an empty state, and the derived form would show it as a load failure.
+- **A missing suite reads "Couldn't load this suite"** with the server's reason, since the server answers 500 for a missing id. A 404 would read as not found, ready for a server fix.
+- **Rename and delete a suite are not offered**: the server has no route for either. Filed ALL-2503.
+- **The suite record holds its banner line while the suite loads, on every load.** Review round 1 changed this under the layout-shift rule; the change was undone when the user withdrew that rule, and the shell's behaviour, already checked in the browser, stands.
+
+**Events, tasks, general updates (Tabs unit)**
+
+- **Events are a table, edited in a dialog**, so no date is edited inline. A custom title is capped at 160 px with a tooltip and wraps under the phase badge, and a description is one muted line under the name. This keeps Edit and Delete in view at 1280 px on real data. Add event stays an inline panel below the events, mounting the tasks area's `CreateEventForm` unchanged, with its typed phrase.
+- **Event edits ask before they reach members**, which today's page never did (ALL-2328):
+  - Moving the members start to now or the past asks the same typed launch phrase as adding a members taking action event.
+  - Any other phase change, and moving a future start earlier, asks a Confirm naming both.
+  - The consequence is computed again after the question, and a changed answer refuses the save.
+- **Deleting an event says what goes with it**: the number of tasks it is deleted from, and that the suite's reminders with it as their deadline stop sending. The exception is reminders timed from a dependency task's deadline: the suite query carries no timing anchors, so the count can be one too high. Groups already fully sent aren't counted. The review reversed an earlier choice to leave the count unqualified. Today's hint said reminders block a delete. What blocks it is a project update tied to the event, and the hint now says so. That refusal answers a bare 500, which is ALL-1441.
+- **Event and general update dates show in Pacific time**, with the zone named.
+- **The Timeline tab mounts the tasks area's `ActionTimeline`**, with no timeline maths of its own (root note on #1092). The draft Timeline shows no readiness count: computing it would repeat the Launch tab's requests and could disagree with it, so it links to Launch instead.
+- **The Tasks tab is a table in priority order** and has no New task button of its own; the header's is always there.
+- **The General updates tab's date sentence names only the suite's members start and deadline.** For an update tied to several suites, the server takes the dates from an arbitrary one: filed ALL-2520.
+
+**Reminders**
+
+- **The tab lists every reminder group of the suite.** Today's page showed only the first task's, so suite 66 showed none of its 8.
+- **Groups are a table, created and edited in a sheet** whose URL is `?group=`, with a leave guard. A sheet opened from the tab closes with Back, and one opened by URL replaces the history entry. The buttons are New reminder and Populate (Default), and the sheet's edit button is "Save changes".
+- **Switching the open group in the sheet still asks first when it has unsaved changes.** The sheet remounts when `?group=` changes, so ignoring that param in the leave guard (as `ma-sys` allows) would drop edits silently.
+- **The group's help says its recipients come from every task in the suite.**
+- **Each save that reaches members says what it sends**: the number of reminders in the next 30 days, the first send time in Pacific time, and whether it is already due. Creating a group keeps the typed phrase. Populating keeps its phrase and now names the number of groups and the task.
+
+**Partition**
+
+- **The parts grid has tasks as rows**, one form and one preview panel.
+  - The no-required-work tick always shows, disabled with its reason where it can't be used.
+  - The save bar gains Discard.
+  - A scheduled partitioned suite carries a warning that every save there is refused.
+  - Saving and previewing run independently, so a click is never silently ignored.
+- **The launched and scheduled sentences name the members taking action event**, because a suite past its start has launched, not been scheduled.
+
+**Launch**
+
+- **Launch is a tab with no side panel.** The checks run in one column, beside a summary that stays in view while scrolling. The summary lists what launch creates, in order with Pacific dates, the counts, the blockers (each linking to its check) and the Launch button.
+- **Nothing is created before the admin types "I am going to notify {n} real members"**:
+  - Launch then creates the members taking action event, the office taking action event and the default reminders.
+  - The schedule never defaults to now and is checked again at click time.
+  - Launch rereads the suite and refuses if it has launched meanwhile.
+- **The contract check comes first**, above every other check, and is a blocker in the summary.
+- **The launch schedule's fields take Pacific time**, as their labels always said, instead of the browser's zone. `usersJoined` shows exactly as the server returns it (root note on #1094). "Preview task form as this member" still goes through `?previewAs=` (#1093).
+- **Copy says "task" for "action" wherever staff read it**, and failure messages name the suite's tabs. The phase names ("members taking action") stay.
+
+## Members list: role badges in place of the Role and Tags columns
+
+- **The badge is the member app's profile-card badge** (Staff, Ambassador, Lead, white on the role's colour, with its tooltip), moved from `UserProfileCard` to `sharedweb/ui/RoleBadges.tsx` and re-exported by `apps/admin/src/ui/RoleBadges.ts`. The member app also has icon-only role marks beside names (`UserDisplayName`); those were not used because the admin requires a word on a badge, and the ambassador and group-lead icons differ only by colour. As in the member app, staff shows alone. The admin gains the `staff` colour token the badge needs, with the member app's value.
+- **Admins get a neutral "Admin" badge before the member app's badge**, since the member app has no admin badge and the Role column showed admins; without it the list would drop that fact.
+- **The badges sit inside the name cell** through a `badge` slot on `PersonCell`, after the name, which truncates first.
+- **Tags stay in the filter bar and in a row's details**; only the column went, replacing the Tags column **Area: members** describes.
+- **Review:** one same-model (Opus 5.5) reviewer over the commit found no fix-now issue. Its two owner decisions became ALL-2698 (staff hides a member's Ambassador and Lead badges) and ALL-2699 (the badges' white text fails contrast, inherited from the member app).
+
+## Area: builder
+
+Agent decisions of the form builder's review loop, round 1 (fixer `area-builder-lead.loop.fix1`); the user was unreachable.
+
+- **Where round 1's fixes sit:** a fix to a commit before "Move the form builder into its page folder" that touches code the move relocated is its own commit after the move, naming in its message the commit it fixes, because folding it earlier would need its import paths rewritten again at the move. Fixes to later commits are folded into them.
+- **A list's sub-field rows offer moves only:** deleting a sub-field happens in its own settings, where the "conditions read this question" confirmation guards it (inventory B37). Giving the row's menu the guard would mean passing the canvas's deletion guard into every container editor; the guarded delete is one click away.
+- **A task form is live** when members can open its task, or when the task is past Draft and the form has responses, as an archived task keeps for when it is unarchived. A draft's responses come from staff previews and don't make it live. When the forms index fails, the toolbar says "Couldn't check whether this form reaches members" and the save confirmation "This form may reach members.", since what failed may be the task lookup, not the response count.
+- **The builder's member picker** (`UserSelect`) matches names; a user without a name is listed and found as "User #<id>". Finding a named user by id waits on the system owner (asks/builder-06, ALL-2664).
+- **Undo and Redo stay icon-only** in the canvas header, named in their aria-label and tooltip, so the header fits at 1280 px. DESIGN.md's lone-icon list doesn't name them; asks/builder-06 puts the choice to the system owner.
+- **Copy:** the Output views empty state says "Add a view to show answers from this form once members finish it.", making no claim about who sees the answers, since the first output view also feeds the activity and home feeds. Preview's Visibility profiles sheet, for a form with member conditions and no member to group, says "Loading members…", "Couldn't load members, so profiles can't be grouped." or "No member has an active contract to group.". The number question's Step always carries "Allowing decimals replaces the step.", so ticking the box moves nothing. The Conditions tab's replace choice reads "Replace with [All rules] [Any rule]" on one row, as tall as the button it replaces.
+- **Preview's outline** takes no actions: no keys, menu or drag edit the form while previewing.
+- **An outline click** reveals the selection on the canvas only; the outline itself scrolls only for arrow keys, an add, a deep link or an issue jump.
+
+Round 2 (fixer `area-builder-lead.loop.fix2`):
+
+- **Leaving a right-click to the browser** inside a context `ElementActionsMenu` uses `stopImmediatePropagation` on the native event. The admin hydrates into the document, where base-ui's trigger also listens, and React's root listener is added at hydration, before any effect adds base-ui's, so it runs first. Disabling the trigger while editing would cover the inline editor but not a list's children, which need the trigger to ignore part of its subtree.
+- **An archived task's form whose response count is loading or failed** asks before a reaching save, and shows "Live check failed" once the count fails. The task sentences ("Couldn't check whether members can open this task", "Members may be able to open this task.") are kept for when the task check itself is unresolved; once the task is known, the form sentences are used, since what is unknown is the responses.
+- **The open issue list during a retry of a failed load** says "Loading the form" and its trigger "Checking", rather than "No issues".
+
+## Area: tasks
+
+The All tasks place and its three views (Timeline, List, Priority), the task record (frame, Overview, Details and New task, Form, Variants, Follow-up forms, Messages and the project update page, Responses, Events, Activity), the cohort builder and prerequisite picker, and the task under a project. They were rebuilt on `ma-tasks` by a frame unit and twelve tab or view units. Each Opus-written unit had its own review loop. The Sonnet-written units and the join adaptations shared one loop on the joined branch. After the rebase onto `ma-sys`, a final review covered the integration commits. Everything below is agent judgement, unless it names the owner's own rules (the stop rule and the fixer bar). The user was asleep and has not seen these decisions.
+
+**Models and review**
+
+- **Opus 5.5 wrote the frame and the wave-1 and wave-2 units**: frame, list, timeline, priority, cohort, overview, details, events, messages. The join and integration commits are Opus too. **Sonnet 5.5 wrote formtabs, followup, activity and project.** At the time these were the Nov 25 afternoon builders, which went to Sonnet at the user's request. Each Sonnet unit's browser pass, and formtabs' full test run, was done by a separate Sonnet "finish" agent, because all four builders stopped without doing them.
+- **Every reviewer and fixer ran Opus 5.5 in a fresh context.** That makes review same-model for the Opus units and the join adaptations, and cross-model for the four Sonnet units: formtabs had its own loop, and activity, followup and project went through the joined loop. Codex couldn't review: its usage limit lasts until Nov 30.
+- **The loops stopped under the owner's stop rule** (Nov 26): a round with no HIGH finding ends the loop, and that round's bugs go to Linear "Modern admin". Events and formtabs stopped after round 1, priority and details after round 4, timeline after round 6, list after round 7, and the joined loop after round 3. Frame (5 rounds), cohort (5), overview (7) and messages (8) ended clean before the rule applied. The final review of the integration commits and a browser smoke of the joined branch, and a one-pass review of the last two fixes, also stopped with no HIGH finding; read as the owner meant it, a round with no HIGH gets no fix round at all, its bugs going to Linear (ALL-2726 to ALL-2730).
+
+**Structure and URLs**
+
+- **The task record's tabs are `overview`, `details`, `form`, `variants`, `follow-up-forms`, `messages`, `responses`, `events`, `activity`, in that order.** Overview is the bare URL. The old ids redirect with the query and hash kept: `updates` → `messages`, `form-variants` → `variants`, `cohort-decisions` → `activity`. The redirect is one hook, `useRenamedTabRedirect`, shared by `/tasks/:id` and the project's task route. Details comes second even though DESIGN.md's record table leaves it out, because the brief and `PLACES.md` put it there.
+- **Each tab has a layout.** Side tabs (Overview, Details, Variants, Messages, Events, Activity) show the side panel. Full tabs (Follow-up forms, Responses) have none. The Form tab is Fill. The layout is one line in `TASK_TAB_LAYOUT`.
+- **`pages/tasks/` holds the place, the record and one folder per tab and view.** Files other areas import keep their old path as a re-export, with names and props unchanged: `ActionTimeline`, `ActionTimelineRowMeta`, `CreateEventForm` (a shim over `AddEventForm`, with `suiteMode={false}` gone), `OpenReferenceWarning`, `ActionListCard`, `ActionProgressBar`. `mounts.md` records them.
+- **The project's task is the task record** (`RecordId.ProjectTask`), with the project in the breadcrumb. Staff testing and the release live in the side panel through `sideExtra`. The project unit changed `sideExtra` to take `{ unsaved, setStaffPreview, openTab }` from the page's editor. A staff-testing write that bypasses the editor's draft would otherwise be reverted by the next Details save. "Full dashboard" is gone, because the project route now is the full record.
+- **The project update is a record page at its old URL** (`/tasks/:id/updates/:updateId`, tabs Content and Details), not the side sheet that DESIGN.md's template map and `PLACES.md` name. It holds a block editor, a separately saved details form, a leave guard and a typed confirm, and the guide's own Dialog and Sheet rule keeps long work out of sheets.
+
+**Messages, reminders, follow-up forms**
+
+- **The Messages tab holds the task's project updates, listed newest first.** Reminders are suite-level and owned by the suites area: the tab shows only a pointer, to the suite's `?tab=reminders` when the task is in a suite. Follow-up forms keep their own tab, and Messages points to it. Neither pointer is a composer.
+- **Create, content, details and sending are separate steps.** Create makes a hidden draft and sends nothing. The first content save publishes it. Sending is its own section, with the typed `notifyRealMembersText("many")` confirm. "Publish now" is blocked while Details has unsaved edits, as Unpublish is. A new update's date still defaults to now, because it is the update's displayed date, not an event.
+- **The sent line gives only the time ("Sent …")**, plus when members get it while that is still ahead. It doesn't name an audience, because the server lets the audience change after a send.
+- **An update URL whose task doesn't match the update's task shows not found**, rather than loading the other task.
+
+**Guards: new or strengthened**
+
+- **Paste JSON is a dialog, and it leaves events out by default.** It says what the paste creates: the suite joined or created, a copied task form, archived, staff preview, public-only, and what isn't copied (reminders, updates, follow-up forms, prerequisites). "Include its N events" starts unticked. Ticked, it shows when the task leaves Draft and who sees it then, and Create asks for `LAUNCH_CONFIRM_TEXT`. That holds for any included event, even all-Draft ones. Where it is true, the confirm also says the paste can't be taken back. If an event's time passes before the confirm, the paste is refused rather than asked again.
+- **Any event that takes a task out of Draft asks the typed launch phrase**, not only a Members taking action event (ALL-2424). It reuses `LAUNCH_CONFIRM_TEXT`, the one phrase for "this exposes the task". In suite mode, every non-Draft event asks it, because the form can't see the suite's tasks' phases. Narrowing that is ALL-2622. A Draft event that hides a task members can see asks a plain confirm. A non-Draft event on a task members already see asks nothing, as before.
+- **The add-event form has no default status and no default date.** "Take effect now" is an explicit checkbox. The form stays closed until asked for, opens inline above the list (it has more than six controls), and gives times in Pacific. It has no leave guard: it is a one-shot add, and the suite shim may mount outside a data router.
+- **Unarchive now confirms.** If unarchiving exposes the task, now or through a scheduled non-draft event, it takes the typed `LAUNCH_CONFIRM_TEXT`, read from the events at click time. A draft gets a plain confirm. The launch phrase was chosen over `notifyRealMembersText` because unarchiving notifies nobody.
+- **Duplicate confirms with what the copy takes**, and says that staff preview or open-by-link expose it at once. It stays disabled, with its reason, while Details is unsaved or a cover image uploads.
+- **On Details, turning public-only or staff preview on asks first.** Turning either off asks nothing, because that hides rather than exposes. Staff preview is disabled once members are taking action, unless it is already on. Re-ticking it after launch asks nothing, since that only restores the saved value.
+- **Start staff testing on a project's task confirms.** The copy is "Every staff account will see this draft. Nothing they enter is submitted." While staff preview is on, the server refuses every member write (`assertNotInStaffPreview`). The confirm doesn't mention public-only, which is set elsewhere.
+- **Priority gains a leave guard for an unsaved order, and Show all asks before it drops one.** DESIGN.md's "Confirm where a mistake would cost work" clause outweighed its no-confirm-on-reversible rule here. Moves and Show all are locked while a save runs and until the saved order reloads.
+- **Delete project (Overview) confirms.** It says the tasks stay and that members stop seeing the project's name.
+
+**All tasks**
+
+- **The List view shows every unarchived task, whatever the Status filter. The Status filter applies to the Timeline only** and is hidden on the List, as on `/actions`. This reverses the list builder's choice to filter both views (review-list, round 2, under DESIGN.md "What you must keep" 2). Show archived applies to both views.
+- **The List is one table, with a group row per suite.** The group row carries the suite's in-progress counts ("1 active · 2 draft"), which takes the place of AL-5's separate card grid. Each row is one line, and the name truncates with a tooltip.
+- **Filter changes push history**, against DESIGN.md's "filters replace", because `/actions`' #1028 tests make Back through archived toggles the contract. The Timeline's Group by replaces history.
+- **The place has no search field**, because the Gantt wouldn't honour one.
+- **The Timeline groups by suite by default** (`?group=project` for the other). Wheel zoom is not carried (TL-2): a vertical wheel must scroll the rows, and Ctrl/⌘+wheel shadows browser zoom. Pan is native scrolling.
+- **Project colours come from `ma-sys`'s `projectColor`.** A task without a project gets no category colour.
+- **The Timeline reads the place's filters** through `useTaskFilters` and `filterTasks`. The place mounts the one refresh-failed banner.
+- **Priority moves by Up and Down buttons on every row and on the line**, announced in a live region, with focus kept on the moved row. Drag is kept. "Move to top" is left for later. Save with nothing changed is a no-op that says "No changes to save". "Moved" is a word and an arrow, not a colour.
+
+**Task record**
+
+- **The header shows the task's status with the pre-launch phase beside it** ("Draft" with "Staff testing", "Planned" with "Scheduled"). It doesn't replace the status (`TaskPhaseBadge`). The status word then matches the side panel, the Overview and the list, as DESIGN.md's status badges rule asks. The status also stays visible when an event sets one the phase doesn't account for, such as Office taking action before launch. The project task's Staff testing section shows the status badge in its Draft phase for the same reason.
+- **Facts in the side panel are read-only.** Edits stay behind Details' explicit save. The exceptions are the project picker (Rename project…, New project…) and the member page slug, which save at once, as before. The header holds status, not tags: categories are a side panel fact.
+- **Details runs content → setup → who takes part → who can see it → completion → more settings**, with one sticky `SaveBar`. The bar's note says, before saving, when a save reaches members. Save failures and the blank-name refusal show in the bar and on the field. Create has no Cancel, only Discard and the breadcrumb. Fields that only sometimes apply are shown disabled with the reason rather than hidden. "Action page description" is now "Task page description".
+- **An empty cohort's hint follows the server.** For a public-only task, it says the task's page still opens to anyone with the link. In a partitioned suite, it says the suite's partition decides who takes part. Under Participating groups, it keeps saying nobody sees the task once launched, because the server hides a Participating groups task with no cohort from every member before it reads the partition (`userCanSeeAction`). Whether it should admit them is ALL-2700. An unreadable cohort shows as unreadable, not empty, on Details and Follow-up forms.
+- **The cohort builder's rows read as a sentence** ("Members who match › Any of these › Has tag …"). It offers no highlight on the root, and Clear has no confirm, since Discard brings the saved cohort back. "No conditions, so no members match" is the default hint. The mount says more through `emptyHint`.
+- **Overview shows "This task is step N of M"** above the project steps, rather than waiting for `ProjectStepRows` to mark the row (ALL-2565). After Delete project, focus goes to the Events list that takes the panel's place. Stats that aren't counted yet read "Not counted yet: counted daily at 9:00 UTC", not a load failure (ALL-2569 keeps the server side). A draft shows one note pointing to Details instead of empty cards.
+- **Activity is the cohort decisions plus a history derived from events and updates.** The server keeps no audit log, so the history shows phase starts, updates published and notifications sent, and no actor. The notification row reads "Notification of “…” sent", timed when Send was pressed and never shown as scheduled. A date moved after delivery leaves delivered entries as they were (`retimeActionUpdateEntries`), so a row timed at arrival could claim a notification is coming when members already have it. The Messages tab gives the arrival.
+- **The Correct decision dialog says only that the member is counted in, or taken out of, the cohort, and that nothing is sent now.** Notifications go to participants, which includes everyone who completed the task, and tag and all-member updates ignore the cohort.
+- **Follow-up forms are a list with one form open** (`?form=`, which replaces history). An end date before the start is refused, a new rule. The delete confirm says the form and its responses are kept. The editor's leave guard ignores the embedded builder's params (`useLeaveGuard(dirty, { ignoreParams: ["editor", "select"] })`), so it still asks when `tab` or `form` changes. The joined review's fixer first added a `discardedBy` option. The rebase onto `ma-sys` replaced it with `ma-sys`'s `ignoreParams`.
+- **The Form tab says that forms have no draft or publish step**: Warning once out of Draft, Info while Draft. Members on a variant keep their variant's form, which the banner doesn't yet say (ALL-2619).
+- **Variants drops its "View responses" button**, since Responses is one tab away. Staged variants have no leave guard, as before (ALL-2621).
+- **A project's task keeps its release gate (PA-6) as Details' unsaved state:** staff testing and every release control are disabled while Details is unsaved, each with "Save your changes first" beside it. The old page also gated on the embedded builder's unsaved edits. Here the Form tab has no side panel and its leave guard asks on any tab switch, so unsaved form edits and those controls are never on screen together, and that wiring is left out. If the Form tab ever gains a side panel, the gate needs the builder's state.
+- **The staff testing buttons are disabled, not spinning, while any write to the task runs.** The record's only pending flag covers every task update, so a spinner would show the toggle working when it isn't (ALL-2703).
+
+**Process**
+
+- **The fixers kept to the owner's fixer bar**: fix-now only for behaviour, accessibility, guard, lost-capability or failing-check defects. Everything else went to Linear or was dropped with a reason in the loop's ledger.
+- **Provenance edits were taken out of the unit commits** (5 commits) during integration, and are collected in this section and `SESSIONS.md`, the area's last commit.
+- **At the landing on `modern-admin`**, after builder and responses: the Form tab passes the builder `task` (id and name) alongside `taskFlow`, and Follow-up forms and Variants pass nothing, as the builder's mount note asks. The Responses tab moves from the padded full-width body to a frame-height fill slot, as the form record's Responses tab does, because the shared responses view now fills its parent and scrolls inside it.
+- **The Overview's project panel lists the project's steps itself**, since the projects area removed the shared `ProjectStepRows`: each step's number, name (linked, the open task marked), member-action dates in Pacific time and completed count (AD-11). The old rows' status line, retention share and completion bar are not carried: the project record's Tasks tab shows them, and AD-11 asks only for the steps with their dates.
+
+## Rebase onto main (#1094 to #1103)
+
+The redesign was rebased onto `origin/main` after nine commits landed there. Two of them changed admin code the redesign had rewritten, and their behaviour was carried into the redesigned pages in the commits that replaced the old code. The other seven needed nothing in the admin: #1097, #1098 and #1100 touch the frontend or agent docs only, #1094 and #1102 change the server without changing an API shape the admin reads, and #1101 and #1103 add `BACKCOMPAT` labels (the members list already dropped its Tags column, and the tag UI that remains is listed for retirement in ALL-2694).
+
+- **#1096's task outline checkbox lives in the form's own settings** (canvas More menu → Form settings), beside the slug and the form JSON, not above the outline as on the old builder. (Agent decision) DESIGN.md gives the inspector the selection's properties and the form scope holds the form's own settings; the outline pane is the navigator. The cost is one more step to find it; the label, help text and saved shape (`taskOutline: false`, the key removed when checked) are #1096's.
+- **#1095's card image is a `FieldGroup` in the update's Details form, saved with Details.** (Agent decision) It was a section of the old details form saved by the same Save, so it stays in that save. The field is restyled with the admin's own `FileInput`, `Button` and tokens, since the redesign's lint bars sharedweb UI and raw colours; it also marks the current choice among the update's images (`aria-pressed`), names the file it uploaded, clears an upload error when another image is chosen, and applies a finished upload to the form as it stands, so edits made while it ran are kept (the old page reverted them).
+- **Main's old card image component is a legacy file from the lint commit until the update page replaces it**, and main's outline checkbox takes token colours in the lint commit, so every commit between still passes the admin's typecheck and lint. (Agent decision) The legacy list says never to add a line; this file is pre-redesign code that arrived from main under commits written before it existed, which is what the list is for.

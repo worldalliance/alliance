@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { WithdrawalDetails } from "./WithdrawalInfo";
+import { WithdrawalDetails, WithdrawalInfo } from "./WithdrawalInfo";
 
 test("shows the chosen option's label, then the typed reason", () => {
   const { container } = render(
@@ -21,4 +21,16 @@ test("labels a withdrawal stored without flags or a reason", () => {
   );
 
   expect(screen.getByText("Other reason")).toBeTruthy();
+});
+
+test("the badge takes focus and names the reason for screen readers", () => {
+  render(
+    <WithdrawalInfo
+      withdrawal={{ outOfTime: true, isMoral: false, declineReason: "busy" }}
+    />,
+  );
+
+  const trigger = screen.getByText("Withdrew").closest("[tabindex='0']");
+  expect(trigger).not.toBeNull();
+  expect(trigger?.textContent).toContain("Took more than 15 minutes: busy");
 });

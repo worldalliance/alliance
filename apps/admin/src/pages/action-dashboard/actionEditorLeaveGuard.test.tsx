@@ -1,6 +1,5 @@
 import { makeAction } from "@alliance/shared/lib/testFixtures";
 import * as readFileDataUriModule from "@alliance/sharedweb/lib/readFileDataUri";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -16,7 +15,9 @@ import {
   useParams,
 } from "react-router";
 import LeaveGuard from "../../components/LeaveGuard";
+import { answerLeaveGuard } from "../../lib/testing/leaveGuard";
 import { makeParsedAction } from "../../lib/testing/parsedAction";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
 const noSearchParams = new URLSearchParams();
@@ -26,8 +27,8 @@ const submitEvent = { preventDefault: () => {} } as React.FormEvent;
 const existing = makeParsedAction({ id: 7 });
 
 /** The action editor at `path`, under the admin layout's LeaveGuard. */
-const renderEditorAt = (path: "/actions/new" | "/actions/7") => {
-  const isNew = path === "/actions/new";
+const renderEditorAt = (path: "/tasks/new" | "/tasks/7") => {
+  const isNew = path === "/tasks/new";
   let editor!: ActionEditorState;
   const Editor = () => {
     editor = useActionEditor({
@@ -71,8 +72,8 @@ const renderEditorAt = (path: "/actions/new" | "/actions/7") => {
         ),
         children: [
           { path, element: <Editor /> },
-          { path: "/actions/:actionId", element: null },
-          { path: "/projects", element: null },
+          { path: "/tasks/:actionId", element: null },
+          { path: "/tasks/projects", element: null },
         ],
       },
     ],
@@ -83,8 +84,8 @@ const renderEditorAt = (path: "/actions/new" | "/actions/7") => {
 };
 
 it("asks before an edited new action is left, and opens the created action unasked", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
-  const { router, editor } = renderEditorAt("/actions/new");
+  const confirm = answerLeaveGuard(false);
+  const { router, editor } = renderEditorAt("/tasks/new");
   await waitFor(() => expect(editor().dirty).toBe(false));
 
   act(() =>
@@ -93,17 +94,17 @@ it("asks before an edited new action is left, and opens the created action unask
       target: { name: "name", value: "Call your rep", type: "text" },
     } as React.ChangeEvent<HTMLInputElement>),
   );
-  await act(() => router.navigate("/projects"));
+  await act(() => router.navigate("/tasks/projects"));
   expect(confirm).toHaveBeenCalledTimes(1);
-  expect(router.state.location.pathname).toBe("/actions/new");
+  expect(router.state.location.pathname).toBe("/tasks/new");
 
   await act(() => editor().handleSubmit(submitEvent));
-  expect(router.state.location.pathname).toBe("/actions/9");
+  expect(router.state.location.pathname).toBe("/tasks/9");
   expect(confirm).toHaveBeenCalledTimes(1);
 });
 
 it("leaves staff on the action they moved to when a new action's create resolves late", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  const confirm = answerLeaveGuard(true);
   let finishCreate!: (created: ReturnType<typeof makeAction>) => void;
   const createAction = jest
     .fn()
@@ -142,10 +143,10 @@ it("leaves staff on the action they moved to when a new action's create resolves
             </LeaveGuard>
           </ToastProvider>
         ),
-        children: [{ path: "/actions/:actionId", element: <Editor /> }],
+        children: [{ path: "/tasks/:actionId", element: <Editor /> }],
       },
     ],
-    { initialEntries: ["/actions/new"] },
+    { initialEntries: ["/tasks/new"] },
   );
   render(<RouterProvider router={router} />);
   const rename = (value: string) =>
@@ -163,7 +164,7 @@ it("leaves staff on the action they moved to when a new action's create resolves
   });
   await waitFor(() => expect(createAction).toHaveBeenCalled());
 
-  await act(() => router.navigate("/actions/7"));
+  await act(() => router.navigate("/tasks/7"));
   await waitFor(() => expect(editor.draftSeeded).toBe(true));
   rename("Write to your rep");
   await act(async () => {
@@ -171,62 +172,62 @@ it("leaves staff on the action they moved to when a new action's create resolves
     await created;
   });
 
-  expect(router.state.location.pathname).toBe("/actions/7");
+  expect(router.state.location.pathname).toBe("/tasks/7");
   expect(screen.getByText(`Saved "Call your rep"`)).toBeTruthy();
   expect(editor.dirty).toBe(true);
   expect(confirm).toHaveBeenCalledTimes(1);
 });
 
 it("asks before a change of search params resets an edited new action", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
-  const { router, editor } = renderEditorAt("/actions/new");
+  const confirm = answerLeaveGuard(false);
+  const { router, editor } = renderEditorAt("/tasks/new");
   await waitFor(() => expect(editor().dirty).toBe(false));
 
   act(() => editor().handleCohortExpressionChange({ type: "AllMembers" }));
-  await act(() => router.navigate("/actions/new?suiteId=3"));
+  await act(() => router.navigate("/tasks/new?suiteId=3"));
 
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(router.state.location.search).toBe("");
 });
 
 it("keeps an existing action's draft through a tab change without asking, and asks on leaving", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
-  const { router, editor } = renderEditorAt("/actions/7");
+  const confirm = answerLeaveGuard(false);
+  const { router, editor } = renderEditorAt("/tasks/7");
   await waitFor(() => expect(editor().draftSeeded).toBe(true));
   act(() => editor().handleCohortExpressionChange({ type: "AllMembers" }));
 
-  await act(() => router.navigate("/actions/7?tab=events"));
+  await act(() => router.navigate("/tasks/7?tab=events"));
   expect(confirm).not.toHaveBeenCalled();
   expect(editor().dirty).toBe(true);
 
-  await act(() => router.navigate("/projects"));
+  await act(() => router.navigate("/tasks/projects"));
   expect(confirm).toHaveBeenCalledTimes(1);
-  expect(router.state.location.pathname).toBe("/actions/7");
+  expect(router.state.location.pathname).toBe("/tasks/7");
 });
 
 it("asks before leaving while a cover image is still uploading", async () => {
   jest
     .spyOn(readFileDataUriModule, "readFileDataUri")
     .mockReturnValue(new Promise(() => {}));
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
-  const { router, editor } = renderEditorAt("/actions/7");
+  const confirm = answerLeaveGuard(false);
+  const { router, editor } = renderEditorAt("/tasks/7");
   await waitFor(() => expect(editor().draftSeeded).toBe(true));
 
   fireEvent.change(screen.getByLabelText("Cover image"), {
     target: { files: [new File(["x"], "cover.png", { type: "image/png" })] },
   });
   expect(editor().dirty).toBe(false);
-  await act(() => router.navigate("/projects"));
+  await act(() => router.navigate("/tasks/projects"));
 
   expect(confirm).toHaveBeenCalledTimes(1);
-  expect(router.state.location.pathname).toBe("/actions/7");
+  expect(router.state.location.pathname).toBe("/tasks/7");
 });
 
 it("stops asking about a left action's upload while the next action loads", async () => {
   jest
     .spyOn(readFileDataUriModule, "readFileDataUri")
     .mockReturnValue(new Promise(() => {}));
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  const confirm = answerLeaveGuard(true);
   const Editor = () => {
     const actionId = Number(useParams().actionId);
     const editor = useActionEditor({
@@ -267,12 +268,12 @@ it("stops asking about a left action's upload while the next action loads", asyn
           </ToastProvider>
         ),
         children: [
-          { path: "/actions/:actionId", element: <Editor /> },
-          { path: "/projects", element: null },
+          { path: "/tasks/:actionId", element: <Editor /> },
+          { path: "/tasks/projects", element: null },
         ],
       },
     ],
-    { initialEntries: ["/actions/7"] },
+    { initialEntries: ["/tasks/7"] },
   );
   render(<RouterProvider router={router} />);
   await waitFor(() =>
@@ -284,10 +285,10 @@ it("stops asking about a left action's upload while the next action loads", asyn
     target: { files: [new File(["x"], "cover.png", { type: "image/png" })] },
   });
 
-  await act(() => router.navigate("/actions/8"));
+  await act(() => router.navigate("/tasks/8"));
   expect(confirm).toHaveBeenCalledTimes(1);
-  await act(() => router.navigate("/projects"));
+  await act(() => router.navigate("/tasks/projects"));
 
   expect(confirm).toHaveBeenCalledTimes(1);
-  expect(router.state.location.pathname).toBe("/projects");
+  expect(router.state.location.pathname).toBe("/tasks/projects");
 });

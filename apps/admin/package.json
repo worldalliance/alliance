@@ -7,7 +7,7 @@
     "dev": "react-router dev",
     "build": "react-router build",
     "serve": "react-router-serve build/server/index.js",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit && eslint .",
+    "typecheck": "react-router typegen && tsc -p tsconfig.app.json --noEmit && eslint .",
     "lint": "eslint .",
     "preview": "vite preview"
   },

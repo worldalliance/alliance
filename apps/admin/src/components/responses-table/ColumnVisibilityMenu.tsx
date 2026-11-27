@@ -1,7 +1,11 @@
-import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Columns3 } from "lucide-react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { formatCount } from "../../lib/formatNumber";
+import { ButtonVariant, buttonVariants } from "../../ui/Button";
+import { Checkbox } from "../../ui/Checkbox";
+import { cn } from "../../ui/cn";
+import { Input } from "../../ui/Input";
+import { Popover, PopoverContent, PopoverTrigger } from "../../ui/Popover";
 import { IdentitySwatch } from "../IdentitySwatch";
 import { ColumnKind, type TableColumn } from "./types";
 
@@ -16,18 +20,7 @@ const ColumnVisibilityMenu: React.FC<ColumnVisibilityMenuProps> = ({
   hiddenColumns,
   onChange,
 }) => {
-  const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open]);
 
   const matching = useMemo(() => {
     const query = filter.trim().toLowerCase();
@@ -49,57 +42,69 @@ const ColumnVisibilityMenu: React.FC<ColumnVisibilityMenuProps> = ({
   ).length;
 
   return (
-    <div className="relative" ref={containerRef}>
-      <Button
-        color={ButtonColor.White}
-        size="small"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
+    <Popover onOpenChange={(open) => !open && setFilter("")}>
+      <PopoverTrigger
+        className={cn(
+          "inline-flex",
+          buttonVariants({ variant: ButtonVariant.Default, size: "small" }),
+        )}
       >
-        <Columns3 aria-hidden="true" className="mr-1.5 size-4" />
+        <Columns3 aria-hidden="true" className="size-4" />
         Columns
         {hiddenCount > 0 && (
-          <span className="ml-1.5 text-zinc-500">{hiddenCount} hidden</span>
+          <span className="text-fg-muted tabular-nums">
+            {formatCount(hiddenCount)} hidden
+          </span>
         )}
-      </Button>
-      {open && (
-        <div className="absolute right-0 z-30 mt-1 flex max-h-96 w-80 flex-col rounded-md border border-zinc-200 bg-white shadow-lg">
-          <div className="flex items-center gap-2 border-b border-zinc-100 p-2">
-            <input
-              autoFocus
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              placeholder="Find a column…"
-              className="min-w-0 flex-1 rounded border border-zinc-300 px-2 py-1 text-sm focus:border-black focus:outline-none"
-            />
-            <button
-              type="button"
-              className="shrink-0 text-xs text-blue-600 hover:underline"
-              onClick={() => onChange([])}
-            >
-              Show all
-            </button>
-            <button
-              type="button"
-              className="shrink-0 text-xs text-blue-600 hover:underline"
-              onClick={() => onChange(columns.map((column) => column.id))}
-            >
-              Hide all
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-1">
-            {matching.length === 0 ? (
-              <p className="px-2 py-3 text-sm text-zinc-500">
-                No column matches that.
-              </p>
-            ) : (
-              matching.map((column) => (
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        aria-label="Columns"
+        className="flex max-h-96 w-80 flex-col p-0"
+      >
+        <div className="flex items-center gap-1 border-b border-line p-2">
+          <Input
+            autoFocus
+            aria-label="Find a column"
+            placeholder="Find a column"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="h-control-sm min-w-0 flex-1"
+          />
+          <button
+            type="button"
+            className={buttonVariants({
+              variant: ButtonVariant.Ghost,
+              size: "small",
+            })}
+            onClick={() => onChange([])}
+          >
+            Show all
+          </button>
+          <button
+            type="button"
+            className={buttonVariants({
+              variant: ButtonVariant.Ghost,
+              size: "small",
+            })}
+            onClick={() => onChange(columns.map((column) => column.id))}
+          >
+            Hide all
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-1">
+          {matching.length === 0 ? (
+            <p className="px-2 py-3 text-fg-muted">No column matches that.</p>
+          ) : (
+            matching.map((column) => {
+              const retired =
+                column.kind === ColumnKind.Question && column.question.retired;
+              return (
                 <label
                   key={column.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-zinc-50"
+                  className="flex min-h-control-sm cursor-pointer items-center gap-2 rounded-sm px-2 py-1 hover:bg-surface-2"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={!hiddenColumns.has(column.id)}
                     onChange={() => toggle(column.id)}
                   />
@@ -113,21 +118,19 @@ const ColumnVisibilityMenu: React.FC<ColumnVisibilityMenuProps> = ({
                   <span
                     className={cn(
                       "min-w-0 flex-1 truncate",
-                      column.kind === ColumnKind.Question &&
-                        column.question.retired &&
-                        "text-zinc-400",
+                      retired && "text-fg-muted italic",
                     )}
                     title={column.label}
                   >
                     {column.label}
                   </span>
                 </label>
-              ))
-            )}
-          </div>
+              );
+            })
+          )}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 };
 

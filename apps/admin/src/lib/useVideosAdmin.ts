@@ -20,7 +20,7 @@ export function useVideosAdmin() {
 }
 
 export function useDeleteVideoAdmin(params: {
-  onError: (error: Error) => void;
+  onError: (error: Error, id: number) => void;
 }) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -40,13 +40,14 @@ export function useDeleteVideoAdmin(params: {
   });
 }
 
-export function useVideoAdmin(id: number) {
+export function useVideoAdmin(id: number, options?: { enabled: boolean }) {
   return useQuery({
     queryKey: queryKeys.videoAdmin(id),
     queryFn: () =>
       videosGetVideoDetailsAdmin({ path: { id }, throwOnError: true }).then(
         (r) => r.data,
       ),
+    enabled: options?.enabled,
   });
 }
 

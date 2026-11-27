@@ -10,10 +10,14 @@ const tagDto = makeTag();
 const volunteers = omit(tagDto, ["users"]);
 
 let summaryLoads: number;
+let tagsFail = false;
 
 serveApi(
   routes({
-    "GET /user/tags": () => Response.json([tagDto]),
+    "GET /user/tags": () =>
+      tagsFail
+        ? Response.json({ message: "Tags are down" }, { status: 500 })
+        : Response.json([tagDto]),
     "GET /user/tag-summaries": () => {
       summaryLoads += 1;
       return Response.json([volunteers]);
@@ -27,6 +31,7 @@ serveApi(
 
 beforeEach(() => {
   summaryLoads = 0;
+  tagsFail = false;
 });
 
 const renderTags = (params?: Parameters<typeof useTagsAdmin>[0]) => {
@@ -34,6 +39,15 @@ const renderTags = (params?: Parameters<typeof useTagsAdmin>[0]) => {
   const view = renderHook(() => useTagsAdmin(params), { wrapper });
   return { client, view };
 };
+
+it("exposes the error of a failed load", async () => {
+  tagsFail = true;
+  const { view } = renderTags();
+  await waitFor(() => expect(view.result.current.isLoadingError).toBe(true));
+  expect(view.result.current.error).toMatchObject({
+    message: "Tags are down",
+  });
+});
 
 it("loads the summaries only when asked", async () => {
   const { view } = renderTags({ summariesEnabled: true });

@@ -1,9 +1,9 @@
 import { useMembers } from "@alliance/shared/lib/useMembers";
-import { useSelectableUsers } from "@alliance/sharedweb/ui/UserSelect";
 import { useMemo } from "react";
 import { useActionSuitesAdmin } from "../../lib/useActionSuitesAdmin";
 import { useAllActions } from "../../lib/useAllActions";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
+import { useSelectableUsers } from "../../ui/UserSelect";
 
 export function useActionEditorLookups() {
   const { allActions, allActionsLoading, allActionsLoadFailed } =

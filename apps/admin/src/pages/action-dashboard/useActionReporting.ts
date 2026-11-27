@@ -8,6 +8,7 @@ import {
   type ShareUrlStatsDto,
 } from "@alliance/shared/client";
 import type { ActionStatus } from "@alliance/shared/client/types.gen";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useAdminTaskForm } from "@alliance/shared/lib/useTaskForm";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
@@ -18,7 +19,7 @@ import { formResponsesAdminQuery } from "../../lib/useFormResponsesAdmin";
 export type ActionReporting = ReturnType<typeof useActionReporting>;
 
 export const taskFormWithSchema = (
-  taskForm: ReturnType<typeof useAdminTaskForm>,
+  taskForm: Pick<ReturnType<typeof useAdminTaskForm>, "data">,
 ) =>
   // Unparsed: the server validates a form's schema before storing it.
   (taskForm.data ?? null) as unknown as FormWithSchema | null;
@@ -70,7 +71,14 @@ export function useActionReporting(
             analyticsGetActionStatsByIdAdmin({
               path: { actionId: actionId.toString() },
               throwOnError: true,
-            }).then((res) => res.data),
+            }).then(
+              (res) => res.data,
+              // A 404 means the daily job hasn't counted the action yet.
+              (error: unknown) => {
+                if (thrownStatus(error) === 404) return null;
+                throw error;
+              },
+            ),
   });
 
   const taskForm = useAdminTaskForm(action?.taskFormId);
@@ -127,10 +135,25 @@ export function useActionReporting(
     shareUrlStats:
       (loadsShareUrlStats && shareUrlStats.data) || NO_SHARE_URL_STATS,
     shareUrlStatsLoading: shareUrlStats.isLoading,
+    shareUrlStatsFailed: loadsShareUrlStats && shareUrlStats.isLoadingError,
     actionStats: actionStats.data ?? null,
+    actionStatsLoading: memberActionStarted && actionStats.isPending,
+    actionStatsNotCounted: memberActionStarted && actionStats.data === null,
     taskForm: taskFormWithSchema(taskForm),
     formResponses: formResponses.data ?? NO_RESPONSES,
+    formResponsesLoading:
+      memberActionStarted &&
+      action.taskFormId !== null &&
+      (taskForm.isPending || formResponses.isPending),
+    formResponsesFailed:
+      memberActionStarted &&
+      action.taskFormId !== null &&
+      (taskForm.isLoadingError || formResponses.isLoadingError),
+    listsIncompleteUsers,
     incompleteUsers: (listsIncompleteUsers && incompleteUsers.data) || NO_USERS,
+    incompleteUsersLoading: listsIncompleteUsers && incompleteUsers.isPending,
+    incompleteUsersFailed:
+      listsIncompleteUsers && incompleteUsers.isLoadingError,
     failedLoads,
   };
 }

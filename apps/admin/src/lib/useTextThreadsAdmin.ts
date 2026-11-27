@@ -48,12 +48,12 @@ export function useNeedsReplyAdmin() {
   });
 }
 
-/** The Needs reply badge's count: null until the list first loads if that
- * load fails, so a failure doesn't read as nobody waiting; a later failed
- * poll keeps the last count. */
-export function useNeedsReplyCount(): number | null {
+/** The Needs reply badge's count: undefined while the list first loads, null
+ * if that load fails, so neither reads as nobody waiting; a later failed poll
+ * keeps the last count. */
+export function useNeedsReplyCount(): number | null | undefined {
   const { data, isError } = useNeedsReplyAdmin();
-  return data?.length ?? (isError ? null : 0);
+  return data?.length ?? (isError ? null : undefined);
 }
 
 export function useTextThreadListAdmin(
@@ -224,6 +224,15 @@ export const fetchNumberThread = (params: {
     query: { before: params.before },
     throwOnError: true,
   }).then((r) => r.data);
+
+/** A thread as last fetched, for what sits beside its conversation; the
+ * conversation's `useNumberThreadAdmin` keeps it fresh. */
+export function useNumberThreadData(threadId: string | undefined) {
+  return useQuery({
+    ...numberThreadQuery(threadId ?? ""),
+    enabled: threadId !== undefined,
+  });
+}
 
 export function useNumberThreadAdmin(threadId: string) {
   const thread = useQuery({

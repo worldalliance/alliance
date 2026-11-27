@@ -55,7 +55,7 @@ const Probe = ({ ready, field }: { ready: boolean; field: boolean }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   useLinkedSelection({ ready, searchParams, setSearchParams, onError });
   search = searchParams.toString();
-  return field && <textarea id="body" defaultValue="Hello wrold, members" />;
+  return field && <textarea name="body" defaultValue="Hello wrold, members" />;
 };
 
 const mount = (
@@ -111,7 +111,7 @@ describe("useLinkedSelection", () => {
     onError.mockClear();
     const view = mount(true, { link: "field=body&from=0&to=5&text=wrold" });
     expect(onError).toHaveBeenCalledWith(
-      'Couldn\'t select the flagged text: "Action page description" no longer reads "wrold" there, so it changed since the check.',
+      'Couldn\'t select the flagged text: "Task page description" no longer reads "wrold" there, so it changed since the check.',
     );
     expect(onError).toHaveBeenCalledTimes(1);
     expect(search).toBe("tab=details");
@@ -141,7 +141,7 @@ describe("useLinkedSelection", () => {
       <div data-testid="pane" style={{ overflowY: "auto" }}>
         {/* happy-dom lays out no text, so textarea-caret puts the caret at the top border's width. */}
         <textarea
-          id="body"
+          name="body"
           defaultValue="Hello wrold, members"
           style={{ borderTopWidth: 120 }}
         />

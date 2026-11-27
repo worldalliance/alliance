@@ -132,7 +132,7 @@ export function actionReadinessItems(
     staffTestingItem("cohort"),
     {
       id: "authors",
-      label: "Action authors set",
+      label: "Authors set",
       isReady: (action.authors?.length ?? 0) > 0,
     },
     staffTestingItem("taskForm"),
@@ -155,7 +155,7 @@ export function actionReadinessItems(
   const minutes = Math.floor(totalSeconds / secondsInMinute);
   const seconds = totalSeconds % secondsInMinute;
   const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-  const readingTimeLabel = `Total reading time: ${timeStr}  - (${descriptionWords} description words + ${formWords} form words)`;
+  const readingTimeLabel = `Total reading time: ${timeStr} (${descriptionWords} description words + ${formWords} form words)`;
 
   items.push({
     id: "readingTime",

@@ -48,7 +48,7 @@ it("names a part's problem and fixes its fallback in the same save", () => {
     screen
       .getByRole("link", { name: /Part "Gated" of Week 12/ })
       .getAttribute("href"),
-  ).toBe("/suites/7");
+  ).toBe("/tasks/suites/7");
   fireEvent.click(screen.getByRole("button", { name: "Fix it in this save" }));
   expect(
     screen.getByRole("heading", {

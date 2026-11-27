@@ -1,26 +1,26 @@
 import { actionsExportActionAdmin } from "@alliance/shared/client";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
 
 export type ActionExport = ReturnType<typeof useActionExport>;
 
 export function useActionExport(actionId: number | null) {
-  const { error: pushError } = useToast();
-
   const [exportActionOpen, setExportActionOpen] = useState(false);
   const [exportActionEvents, setExportActionEvents] = useState(false);
   const [exportActionTaskForm, setExportActionTaskForm] = useState(true);
   const [exportActionSuite, setExportActionSuite] = useState(false);
   const [jsonCopied, setJsonCopied] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const handleExportActionOpen = async () => {
+    setExportError(null);
     setExportActionOpen((prev) => !prev);
   };
 
   const handleExportAction = async () => {
     if (actionId) {
+      setExportError(null);
       // Handed over unresolved: Safari only allows the write inside the click.
       const copied = await copyToClipboard(
         actionsExportActionAdmin({
@@ -38,7 +38,7 @@ export function useActionExport(actionId: number | null) {
         ),
       );
       if (!copied) {
-        pushError("Could not export the action JSON to the clipboard");
+        setExportError("Couldn't copy the task's JSON to the clipboard.");
         return;
       }
       setJsonCopied(true);
@@ -61,6 +61,7 @@ export function useActionExport(actionId: number | null) {
     exportActionSuite,
     setExportActionSuite,
     jsonCopied,
+    exportError,
     handleExportActionOpen,
     handleExportAction,
   };

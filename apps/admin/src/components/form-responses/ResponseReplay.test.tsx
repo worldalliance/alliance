@@ -21,14 +21,14 @@ const renderEmpty = (filterActive: boolean) => {
 it("says a form has no responses yet, with nothing to clear", () => {
   renderEmpty(false);
 
-  expect(screen.getByText("No responses yet for this form.")).toBeTruthy();
-  expect(screen.queryByText("Clear filter")).toBeNull();
+  expect(screen.getByText("No responses yet")).toBeTruthy();
+  expect(screen.queryByText("Clear filters")).toBeNull();
 });
 
 it("offers to clear a filter that matches no responses", () => {
   const onClearFilter = renderEmpty(true);
-  fireEvent.click(screen.getByText("Clear filter"));
+  fireEvent.click(screen.getByText("Clear filters"));
 
-  expect(screen.getByText("No responses match this filter.")).toBeTruthy();
+  expect(screen.getByText("No results")).toBeTruthy();
   expect(onClearFilter).toHaveBeenCalled();
 });

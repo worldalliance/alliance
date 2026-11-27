@@ -1,0 +1,4 @@
+# Files written before the redesign, which the admin's design rules skip:
+# raw colour classes, arbitrary values, sharedweb/ui imports, the shared cn,
+# ButtonColor and window.confirm. See "Lint" in apps/admin/DESIGN.md.
+# Delete a file's line when you redesign it. Never add one.

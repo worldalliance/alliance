@@ -94,6 +94,7 @@ const FormRenderer = ({
           createAccountHref={createAccountHref}
           onSubmit={onSubmit ? form.submitCurrentPage : null}
           onPreviewSubmit={form.validateAllPagesAndShowFirstInvalid}
+          answers={form.effectiveFormData}
           submitting={submitting}
           submitLabel={
             schema.submit?.label || (followUp ? "Submit" : taskFlow.submit)

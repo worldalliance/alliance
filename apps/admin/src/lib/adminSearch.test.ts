@@ -40,11 +40,11 @@ const search = (query: string) =>
 describe("adminSearchResults", () => {
   it("finds every kind by name, names starting with the query first", () => {
     expect(search("call")).toEqual([
-      { kind: SearchKind.Action, label: "Call your senator", to: "/actions/4" },
-      { kind: SearchKind.Action, label: "Recall petition", to: "/actions/12" },
-      { kind: SearchKind.Suite, label: "Spring calls", to: "/suites/3" },
-      { kind: SearchKind.Form, label: "Call script", to: "/forms/5" },
-      { kind: SearchKind.Group, label: "Call center", to: "/groups/7" },
+      { kind: SearchKind.Action, label: "Call your senator", to: "/tasks/4" },
+      { kind: SearchKind.Action, label: "Recall petition", to: "/tasks/12" },
+      { kind: SearchKind.Suite, label: "Spring calls", to: "/tasks/suites/3" },
+      { kind: SearchKind.Form, label: "Call script", to: "/tasks/forms/5" },
+      { kind: SearchKind.Group, label: "Call center", to: "/members/groups/7" },
     ]);
   });
 
@@ -53,10 +53,10 @@ describe("adminSearchResults", () => {
       { kind: SearchKind.Page, label: "Event Log", to: "/event-log" },
     ]);
     expect(search("ana@")).toEqual([
-      { kind: SearchKind.Member, label: "Ana Lee", to: "/member/10" },
+      { kind: SearchKind.Member, label: "Ana Lee", to: "/members/10" },
     ]);
     expect(search("5550102000")).toEqual([
-      { kind: SearchKind.Member, label: "Ana Lee", to: "/member/10" },
+      { kind: SearchKind.Member, label: "Ana Lee", to: "/members/10" },
     ]);
   });
 
@@ -68,7 +68,7 @@ describe("adminSearchResults", () => {
 
   it("finds anything by its exact id", () => {
     expect(search("12")).toEqual([
-      { kind: SearchKind.Action, label: "Recall petition", to: "/actions/12" },
+      { kind: SearchKind.Action, label: "Recall petition", to: "/tasks/12" },
     ]);
   });
 

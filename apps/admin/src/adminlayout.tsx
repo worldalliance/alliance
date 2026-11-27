@@ -1,38 +1,29 @@
-import { cn } from "@alliance/shared/styles/util";
 import { isStaging } from "@alliance/sharedweb/lib/config";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
+import { useEffect } from "react";
 import { Outlet } from "react-router";
 import LeaveGuard from "./components/LeaveGuard";
 import { useAuth } from "./lib/AuthContext";
 
 export default function AdminLayout() {
   const { user, isAuthenticated, logout, loading } = useAuth();
-  if (
-    (isAuthenticated && user && !user.admin) ||
-    (!isAuthenticated && !loading)
-  ) {
-    logout();
-  }
+  const signedOut = !isAuthenticated && !loading;
+  const notAdmin = isAuthenticated && user !== undefined && !user.admin;
+  useEffect(() => {
+    if (signedOut || notAdmin) void logout();
+  }, [signedOut, notAdmin, logout]);
 
   return (
-    <>
-      <LeaveGuard>
-        <Outlet />
-      </LeaveGuard>
-      {isStaging() && (
-        <div
-          className={cn(
-            zIndex.nav,
-            "fixed top-0 left-0 right-0 h-6 bg-green flex flex-row gap-1",
-          )}
-        >
-          {[...Array(100)].map((_, index) => (
-            <span key={index} className="text-white text-sm !font-mono">
-              staging
-            </span>
-          ))}
+    <LeaveGuard>
+      <div className="flex h-screen flex-col">
+        {isStaging() && (
+          <p className="shrink-0 bg-success-soft py-0.5 text-center text-caption font-semibold text-success">
+            Staging
+          </p>
+        )}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <Outlet />
         </div>
-      )}
-    </>
+      </div>
+    </LeaveGuard>
   );
 }

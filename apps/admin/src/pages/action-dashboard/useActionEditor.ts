@@ -7,11 +7,9 @@ import {
   type ActionSuiteDto,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { omit } from "es-toolkit";
 import jsonStableStringify from "json-stable-stringify";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { ReviewerRow } from "../../components/ActionReviewersEditor";
 import { useContentConfirm } from "../../components/useContentConfirm";
 import { partsMaySetOptional } from "../../lib/actionFieldDefs";
 import { actionFormInputValue } from "../../lib/actionFormInputValue";
@@ -19,6 +17,9 @@ import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
 import { useCoverImage } from "../../lib/useCoverImage";
 import { useLeaveGuard } from "../../lib/useLeaveGuard";
+import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
+import { useToast } from "../../ui/ToastProvider";
+import type { ReviewerRow } from "../tasks/details/reviewerRows";
 import { imageUploadingMessage, logActionError } from "./actionSaveErrors";
 import { useNavigateToCreatedAction } from "./useActionCommands";
 
@@ -47,8 +48,6 @@ function emptyActionDraft(suiteId: number | undefined): CreateActionDto {
     onboarding: false,
   };
 }
-
-const NAME_MISSING = "Give the action a name.";
 
 // Keys are sorted so a field patched into a saved draft that lacked it
 // compares equal to the form. A blank field may be absent, null or ""
@@ -162,6 +161,9 @@ export function useActionEditor(params: {
   );
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [nameMissing, setNameMissing] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const { confirmSave, dialog: contentDialog } = useContentConfirm();
   // A save can resolve after staff have moved on to another action, whose
   // draft it must leave alone.
@@ -171,29 +173,35 @@ export function useActionEditor(params: {
   }, [actionId]);
   const { success } = useToast();
 
+  const suiteParam = searchParams.get("suiteId");
+  const resetToEmpty = useCallback(() => {
+    const emptyForm = emptyActionDraft(
+      suiteParam ? parseInt(suiteParam) : undefined,
+    );
+    setForm(emptyForm);
+    setSavedDraft(
+      draftOf({
+        form: emptyForm,
+        reviewerRows: [],
+        cohortExpression: null,
+        imageKey: null,
+      }),
+    );
+    setReviewerRows([]);
+    resetCoverImage(null);
+    setCohortExpression(null);
+    setSaveError(null);
+    setNameMissing(false);
+    setJustSaved(false);
+  }, [suiteParam, resetCoverImage]);
+
   useEffect(() => {
     if (isNew) {
-      const emptyForm = emptyActionDraft(
-        searchParams.get("suiteId")
-          ? parseInt(searchParams.get("suiteId")!)
-          : undefined,
-      );
-      setForm(emptyForm);
-      setSavedDraft(
-        draftOf({
-          form: emptyForm,
-          reviewerRows: [],
-          cohortExpression: null,
-          imageKey: null,
-        }),
-      );
-      setReviewerRows([]);
-      resetCoverImage(null);
+      resetToEmpty();
       setError(null);
-      setCohortExpression(null);
       setSeededActionId(null);
     }
-  }, [isNew, searchParams, resetCoverImage, setError]);
+  }, [isNew, searchParams, resetToEmpty, setError]);
 
   const setTaskFormId = async (formId: number) => {
     setForm((prev) => ({ ...prev, taskFormId: formId }));
@@ -228,54 +236,65 @@ export function useActionEditor(params: {
     );
   };
 
+  const seedFrom = useCallback(
+    (parsedAction: NonNullable<typeof action>) => {
+      const {
+        usersCompleted: _usersCompleted,
+        usersJoined: _usersJoined,
+        events: _events,
+        updates: _updates,
+        suite,
+        reviewers,
+        followUpForms: _followUpForms,
+        // Saved inline on its own; a stale copy here would undo that save.
+        slug: _slug,
+        ...formData
+      } = parsedAction;
+
+      const authors = parsedAction.authors ?? [];
+      const authorIds = authors.map((user) => user.id);
+
+      const seededForm = {
+        ...formData,
+        taskFormId: parsedAction.taskFormId,
+        suiteId: suite?.id,
+        authorIds,
+      };
+      const seededRows = reviewers.map((r) => ({ ...r, key: makeTempId() }));
+      const seededCohort = parsedAction.cohortExpression ?? null;
+      setForm(seededForm);
+      setReviewerRows(seededRows);
+      setCohortExpression(seededCohort);
+      resetCoverImage(parsedAction.image ?? null);
+      setSaveError(null);
+      setNameMissing(false);
+      setJustSaved(false);
+      setSavedDraft(
+        draftOf({
+          form: seededForm,
+          reviewerRows: seededRows,
+          cohortExpression: seededCohort,
+          imageKey: null,
+        }),
+      );
+    },
+    [resetCoverImage],
+  );
+
   // Seed the editable draft state (form fields, reviewers, cohort expression,
   // image) once per action; background refetches and cache writes must not
   // stomp in-progress edits. Wait out in-flight fetches so the seed comes
   // from fresh data, not a stale cache entry.
   useEffect(() => {
-    const parsedAction = action;
-    if (!parsedAction || actionFetching || seededActionId === parsedAction.id) {
-      return;
-    }
-    setSeededActionId(parsedAction.id);
+    if (!action || actionFetching || seededActionId === action.id) return;
+    setSeededActionId(action.id);
+    seedFrom(action);
+  }, [action, actionFetching, seededActionId, seedFrom]);
 
-    const {
-      usersCompleted: _usersCompleted,
-      usersJoined: _usersJoined,
-      events: _events,
-      updates: _updates,
-      suite,
-      reviewers,
-      followUpForms: _followUpForms,
-      // Saved inline on its own; a stale copy here would undo that save.
-      slug: _slug,
-      ...formData
-    } = parsedAction;
-
-    const authors = parsedAction.authors ?? [];
-    const authorIds = authors.map((user) => user.id);
-
-    const seededForm = {
-      ...formData,
-      taskFormId: parsedAction.taskFormId,
-      suiteId: suite?.id,
-      authorIds,
-    };
-    const seededRows = reviewers.map((r) => ({ ...r, key: makeTempId() }));
-    const seededCohort = parsedAction.cohortExpression ?? null;
-    setForm(seededForm);
-    setReviewerRows(seededRows);
-    setCohortExpression(seededCohort);
-    resetCoverImage(parsedAction.image ?? null);
-    setSavedDraft(
-      draftOf({
-        form: seededForm,
-        reviewerRows: seededRows,
-        cohortExpression: seededCohort,
-        imageKey: null,
-      }),
-    );
-  }, [action, actionFetching, seededActionId, resetCoverImage]);
+  const discard = () => {
+    if (isNew) resetToEmpty();
+    else if (action) seedFrom(action);
+  };
 
   const handleActionCreated = useNavigateToCreatedAction();
 
@@ -299,10 +318,12 @@ export function useActionEditor(params: {
       ...prev,
       [name]: actionFormInputValue(name, value),
     }));
-    if (name === "name" && value.trim()) {
-      setError((shown) => (shown === NAME_MISSING ? null : shown));
-    }
+    if (name === "name" && value.trim()) setNameMissing(false);
   };
+
+  const patchForm = useCallback((patch: Partial<CreateActionDto>) => {
+    setForm((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const handleCohortExpressionChange = useCallback(
     (expr: CohortExpression | null) => {
@@ -338,6 +359,7 @@ export function useActionEditor(params: {
     seededActionId === actionId &&
     savedDraft !== null &&
     draftOf({ form, reviewerRows, cohortExpression, imageKey }) !== savedDraft;
+  if (dirty && justSaved) setJustSaved(false);
   // A cover image still uploading is not in the draft yet. A new action's
   // draft resets when its search params change.
   const navigateUnprompted = useLeaveGuard(
@@ -347,24 +369,24 @@ export function useActionEditor(params: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setSaveError(null);
 
     // Saving would overwrite the stored (unparseable) cohort expression with
     // the empty editor state
     if (cohortParseFailed) {
-      setError(
-        "Saving is disabled: the stored cohort expression could not be parsed.",
+      setSaveError(
+        "The stored cohort couldn't be read, so saving would erase it.",
       );
       return;
     }
 
     if (imageUploading) {
-      setError(imageUploadingMessage);
+      setSaveError(imageUploadingMessage);
       return;
     }
 
     if (!form.name.trim()) {
-      setError(NAME_MISSING);
+      setNameMissing(true);
       return;
     }
 
@@ -393,10 +415,10 @@ export function useActionEditor(params: {
     if (isNew) {
       const result = await R.fromPromise(
         createAction(formData),
-        logActionError(),
+        logActionError(SAVE_FAILED_FALLBACK),
       );
       if (!result.ok) {
-        setError(result.error);
+        setSaveError(result.error);
         return;
       }
       const created = result.value;
@@ -424,14 +446,15 @@ export function useActionEditor(params: {
       );
       const result = await R.fromPromise(
         updateAction(gridOptional ? omit(formData, ["optional"]) : formData),
-        logActionError(),
+        logActionError(SAVE_FAILED_FALLBACK),
       );
       if (!result.ok) {
-        setError(result.error);
+        if (currentActionId.current === actionId) setSaveError(result.error);
         return;
       }
       success(`Saved "${form.name.trim()}"`);
       if (currentActionId.current !== actionId) return;
+      setJustSaved(true);
       if (!gridOptional) {
         setSavedDraft(submitted);
         return;
@@ -453,6 +476,12 @@ export function useActionEditor(params: {
   return {
     draftSeeded: seededActionId === actionId,
     dirty,
+    justSaved,
+    saveError,
+    nameMissing,
+    discard,
+    patchForm,
+    pickCoverImage,
     setStaffPreview,
     contentDialog,
     form,

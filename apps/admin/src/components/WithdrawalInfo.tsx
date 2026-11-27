@@ -1,34 +1,15 @@
 import {
   WITHDRAWAL_OPTION_LABELS,
-  type WithdrawalOption,
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
-import { cn } from "@alliance/shared/styles/util";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alliance/sharedweb/ui/HoverCard";
 import React from "react";
+import Badge from "../ui/Badge";
+import { cn } from "../ui/cn";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/HoverCard";
 
 export const WithdrawalBadge: React.FC<{ className?: string }> = ({
   className,
-}) => (
-  <span
-    className={cn(
-      "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800",
-      className,
-    )}
-  >
-    Withdrew
-  </span>
-);
-
-const WITHDRAWAL_OPTION_TEXT_STYLE: Record<WithdrawalOption, string> = {
-  out_of_time: "text-orange-600",
-  moral: "text-amber-600",
-  other: "text-zinc-700",
-};
+}) => <Badge className={cn("self-auto", className)}>Withdrew</Badge>;
 
 type StoredWithdrawal = {
   outOfTime?: boolean | null;
@@ -36,33 +17,48 @@ type StoredWithdrawal = {
   declineReason?: string | null;
 };
 
+/** The option the member picked, then the reason they typed, as two spans for the caller to lay out. */
 export const WithdrawalDetails: React.FC<{ withdrawal: StoredWithdrawal }> = ({
   withdrawal,
-}) => {
-  const option = withdrawalOptionFromFlags(withdrawal);
-  return (
-    <>
-      <span className={WITHDRAWAL_OPTION_TEXT_STYLE[option]}>
-        {WITHDRAWAL_OPTION_LABELS[option]}
-      </span>
-      {withdrawal.declineReason && (
-        <span className="text-zinc-500">{withdrawal.declineReason}</span>
-      )}
-    </>
-  );
-};
+}) => (
+  <>
+    <span className="font-medium text-fg">
+      {WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(withdrawal)]}
+    </span>
+    {withdrawal.declineReason && (
+      <span className="text-fg-muted">{withdrawal.declineReason}</span>
+    )}
+  </>
+);
+
+const withdrawalSummary = (withdrawal: StoredWithdrawal): string =>
+  [
+    WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(withdrawal)],
+    withdrawal.declineReason,
+  ]
+    .filter(Boolean)
+    .join(": ");
 
 export const WithdrawalInfo: React.FC<{
   withdrawal: StoredWithdrawal;
   trigger?: React.ReactElement;
-}> = ({
-  withdrawal,
-  trigger = <WithdrawalBadge className="whitespace-nowrap cursor-default" />,
-}) => (
+}> = ({ withdrawal, trigger }) => (
   <HoverCard>
-    <HoverCardTrigger render={trigger} />
+    <HoverCardTrigger
+      render={
+        trigger ?? (
+          <span
+            tabIndex={0}
+            className="inline-flex cursor-default rounded-full focus-ring"
+          >
+            <WithdrawalBadge />
+            <span className="sr-only">: {withdrawalSummary(withdrawal)}</span>
+          </span>
+        )
+      }
+    />
     <HoverCardContent>
-      <div className="flex flex-col items-center gap-0.5">
+      <div className="flex max-w-xs flex-col gap-0.5 wrap-break-word">
         <WithdrawalDetails withdrawal={withdrawal} />
       </div>
     </HoverCardContent>

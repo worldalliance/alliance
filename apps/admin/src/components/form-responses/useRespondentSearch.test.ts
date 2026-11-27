@@ -27,17 +27,11 @@ it("lists matching respondents, names starting with the query first", () => {
   ]);
 });
 
-it("selects the first result on Enter and resets the search", () => {
+it("selects a response and resets the search", () => {
   const { result, onSelect } = renderSearch();
-  act(() => {
-    result.current.setQuery("alba");
-    result.current.setOpen(true);
-  });
-  const preventDefault = jest.fn();
-  act(() => result.current.handleKeyDown({ key: "Enter", preventDefault }));
+  act(() => result.current.setQuery("alba"));
+  act(() => result.current.select(1));
 
   expect(onSelect).toHaveBeenCalledWith(1);
-  expect(preventDefault).toHaveBeenCalled();
   expect(result.current.query).toBe("");
-  expect(result.current.open).toBe(false);
 });

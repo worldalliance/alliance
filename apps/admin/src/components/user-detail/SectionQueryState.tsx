@@ -1,4 +1,4 @@
-import { cn } from "@alliance/shared/styles/util";
+import { cn } from "../../ui/cn";
 
 export function SectionLoadState({
   noun,
@@ -8,7 +8,7 @@ export function SectionLoadState({
   isError: boolean;
 }) {
   return (
-    <p className={cn("text-sm", isError ? "text-red-600" : "text-zinc-500")}>
+    <p className={isError ? "text-danger" : "text-fg-muted"}>
       {isError ? `Failed to load ${noun}` : `Loading ${noun}...`}
     </p>
   );
@@ -27,7 +27,7 @@ export function SectionRefreshError({
   return (
     <p
       role="status"
-      className={cn("text-xs text-red-600", isError && "mb-2", className)}
+      className={cn("text-caption text-danger", isError && "mb-2", className)}
     >
       {isError && `Could not refresh ${noun}. Reload to see the latest.`}
     </p>

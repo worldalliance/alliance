@@ -52,6 +52,8 @@ response-count::before { content: "responses "; color: #999999; }
 snapshot-count::before { content: "snapshots "; color: #999999; }
 first-response-at::before { content: "first response "; color: #999999; }
 last-response-at::before { content: "last response "; color: #999999; }
+filters::before { content: "filters "; color: #999999; }
+filter + filter::before { content: " · "; }
 
 variant { display: block; margin-bottom: 32px; }
 variant::before {

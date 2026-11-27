@@ -1,5 +1,5 @@
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback } from "react";
+import { useToast } from "../ui/ToastProvider";
 import { adminRefusalMessage } from "./adminRefusal";
 
 export function useRefusalToast(): (error: unknown, fallback: string) => void {

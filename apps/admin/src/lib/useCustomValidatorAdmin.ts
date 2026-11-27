@@ -11,7 +11,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback } from "react";
-import type { CustomValidatorDraft } from "../components/form-fields/customValidatorDrafts";
+import type { CustomValidatorDraft } from "../pages/forms/builder/questions/customValidatorDrafts";
 
 const customValidatorQuery = (id: number) =>
   queryOptions({

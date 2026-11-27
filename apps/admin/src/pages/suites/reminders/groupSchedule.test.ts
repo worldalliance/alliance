@@ -1,0 +1,221 @@
+import type { ReminderGroupDto } from "@alliance/shared/client";
+import { makeEvent } from "@alliance/shared/lib/testFixtures";
+import { formatDateTime } from "../../../lib/formatDate";
+import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
+import {
+  describeGroupSchedule,
+  groupSendStart,
+  relativeSendLabel,
+} from "./groupSchedule";
+
+const deadline = new Date(2026, 0, 10, 12, 0);
+const hour = 60 * 60;
+
+const makeGroup = (overrides: Partial<ReminderGroupDto>): ReminderGroupDto => ({
+  id: 1,
+  name: "Reminder",
+  timingMode: "event_launch",
+  cohortType: "all_uncompleted",
+  emailMessage: "",
+  emailSubject: "",
+  textMessage: "",
+  pushMessage: "",
+  send_range_start: null,
+  send_range_end: null,
+  sendAtAbsolute: null,
+  sendAtSecondsFromDeadline: null,
+  relative_range_start_seconds_from_deadline: null,
+  relative_range_end_seconds_from_deadline: null,
+  useSuiteTaskCount: true,
+  allSent: false,
+  excludeOptionalActions: false,
+  excludePreviouslyNotified: false,
+  memberActionEvent: {
+    ...makeEvent({ date: new Date(2026, 0, 1, 9, 0).toISOString() }),
+    updatedAt: new Date(2026, 0, 1).toISOString(),
+  },
+  isMissedSuite: false,
+  ...overrides,
+});
+
+/** Jan `day`, 2026 at `hour` in the runner's zone, as staff read it: in Pacific time. */
+const pt = (day: number, hour: number) =>
+  formatDateTime(new Date(2026, 0, day, hour, 0), {
+    timeZone: LAUNCH_TIME_ZONE,
+  });
+
+const close = makeEvent({ title: "Close", date: deadline.toISOString() });
+
+describe("describeGroupSchedule", () => {
+  it("describes an absolute send time", () => {
+    const group = makeGroup({
+      timingMode: "absolute",
+      sendAtAbsolute: new Date(2026, 0, 2, 10, 0).toISOString(),
+    });
+
+    expect(
+      describeGroupSchedule({ group, referenceEvent: null, anchorLabel: null }),
+    ).toEqual({
+      primary: `Sends ${pt(2, 10)}`,
+      secondary: "Absolute schedule",
+      pastTense: `at ${pt(2, 10)}`,
+    });
+  });
+
+  it("describes an offset before the reference event", () => {
+    const group = makeGroup({
+      timingMode: "from_deadline",
+      sendAtSecondsFromDeadline: 3 * hour,
+    });
+
+    expect(
+      describeGroupSchedule({
+        group,
+        referenceEvent: close,
+        anchorLabel: null,
+      }),
+    ).toEqual({
+      primary: "Sends 3 hours before Close",
+      secondary: `${pt(10, 9)} • Deadline ${pt(10, 12)}`,
+      pastTense: "3 hours before Close",
+    });
+  });
+
+  it("names an anchor instead of the reference event's title", () => {
+    const group = makeGroup({
+      timingMode: "from_deadline",
+      sendAtSecondsFromDeadline: 0,
+    });
+
+    expect(
+      describeGroupSchedule({
+        group,
+        referenceEvent: close,
+        anchorLabel: "Pledge deadline",
+      }).primary,
+    ).toBe("Sends at Pledge deadline");
+  });
+
+  it("flags a deadline-relative group with no reference event", () => {
+    const group = makeGroup({
+      timingMode: "from_deadline",
+      sendAtSecondsFromDeadline: hour,
+    });
+
+    expect(
+      describeGroupSchedule({ group, referenceEvent: null, anchorLabel: null })
+        .secondary,
+    ).toBe("Error: no deadline event found to schedule from");
+  });
+
+  it("describes a fixed window", () => {
+    const group = makeGroup({
+      timingMode: "within_range",
+      send_range_start: new Date(2026, 0, 3, 8, 0).toISOString(),
+      send_range_end: new Date(2026, 0, 4, 8, 0).toISOString(),
+    });
+
+    expect(
+      describeGroupSchedule({ group, referenceEvent: null, anchorLabel: null })
+        .primary,
+    ).toBe(`Sends between ${pt(3, 8)} and ${pt(4, 8)}`);
+  });
+
+  it("describes a window relative to the reference event", () => {
+    const group = makeGroup({
+      timingMode: "within_relative_range",
+      relative_range_start_seconds_from_deadline: 48 * hour,
+      relative_range_end_seconds_from_deadline: 24 * hour,
+    });
+
+    expect(
+      describeGroupSchedule({
+        group,
+        referenceEvent: close,
+        anchorLabel: null,
+      }),
+    ).toEqual({
+      primary: "Sends between 2 days before and 1 day before Close",
+      secondary: `${pt(8, 12)} – ${pt(9, 12)} • Deadline ${pt(10, 12)}`,
+      pastTense: "between 2 days before and 1 day before Close",
+    });
+  });
+
+  it("describes a launch-time send", () => {
+    expect(
+      describeGroupSchedule({
+        group: makeGroup({ timingMode: "event_launch" }),
+        referenceEvent: null,
+        anchorLabel: null,
+      }).primary,
+    ).toBe(`Sends when launch event begins (${pt(1, 9)})`);
+  });
+});
+
+describe("groupSendStart", () => {
+  it("counts a deadline offset back from the reference event", () => {
+    const group = makeGroup({
+      timingMode: "from_deadline",
+      sendAtSecondsFromDeadline: 3 * hour,
+    });
+
+    expect(groupSendStart(group, close)).toEqual(new Date(2026, 0, 10, 9, 0));
+  });
+
+  it("starts a relative window at its earlier edge", () => {
+    const group = makeGroup({
+      timingMode: "within_relative_range",
+      relative_range_start_seconds_from_deadline: 48 * hour,
+      relative_range_end_seconds_from_deadline: 24 * hour,
+    });
+
+    expect(groupSendStart(group, close)).toEqual(new Date(2026, 0, 8, 12, 0));
+  });
+
+  it("falls back to a fixed window's end when it has no start", () => {
+    const end = new Date(2026, 0, 4, 8, 0);
+    const group = makeGroup({
+      timingMode: "within_range",
+      send_range_end: end.toISOString(),
+    });
+
+    expect(groupSendStart(group, null)).toEqual(end);
+  });
+
+  it("has no start for a deadline-relative group with no reference event", () => {
+    const group = makeGroup({
+      timingMode: "from_deadline",
+      sendAtSecondsFromDeadline: hour,
+    });
+
+    expect(groupSendStart(group, null)).toBeNull();
+  });
+});
+
+describe("relativeSendLabel", () => {
+  const at = (hours: number) =>
+    relativeSendLabel(
+      new Date(deadline.getTime() + hours * hour * 1000),
+      deadline,
+    );
+
+  it("shows days and hours, so sends a day apart read a day apart", () => {
+    expect([at(41), at(65), at(48)]).toEqual([
+      "in 1 day 17 hours",
+      "in 2 days 17 hours",
+      "in 2 days",
+    ]);
+  });
+
+  it("shows hours and minutes under a day, minutes under an hour", () => {
+    expect([at(5.5), at(0.25), at(0)]).toEqual([
+      "in 5 hours 30 minutes",
+      "in 15 minutes",
+      "now",
+    ]);
+  });
+
+  it("counts time since a send that already happened", () => {
+    expect(at(-30)).toBe("1 day 6 hours ago");
+  });
+});

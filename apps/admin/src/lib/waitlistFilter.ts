@@ -92,7 +92,8 @@ export const CONTACT_METHOD_LABELS: Record<WaitlistContactMethod, string> = {
 
 export const isContactMethod = (
   value: string,
-): value is WaitlistContactMethod => value in CONTACT_METHOD_LABELS;
+): value is WaitlistContactMethod =>
+  Object.hasOwn(CONTACT_METHOD_LABELS, value);
 
 /** Spam-like entries get no email and start hidden. */
 export const SPAM_STATUSES: Record<

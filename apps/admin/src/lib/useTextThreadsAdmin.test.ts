@@ -50,12 +50,12 @@ it("counts the numbers waiting", async () => {
   await waitFor(() => expect(view.result.current).toBe(2));
 });
 
-it("counts nobody while the list loads", () => {
+it("gives no count yet while the list loads", () => {
   respond = () => new Promise(() => {});
 
   const view = renderHook(useNeedsReplyCount, queryWrapper());
 
-  expect(view.result.current).toBe(0);
+  expect(view.result.current).toBeUndefined();
 });
 
 it("gives no count when the list has never loaded", async () => {

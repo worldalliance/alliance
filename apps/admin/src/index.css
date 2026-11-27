@@ -93,6 +93,15 @@
 @font-face {
   font-family: "Inter";
   src: url("/assets/fonts/Inter-VariableFont_opsz,wght.ttf") format("truetype");
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/assets/fonts/Inter-Italic-VariableFont_opsz,wght.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
 }
 
 @font-face {
@@ -162,6 +171,7 @@
   --color-page: #fcfcfc;
   --color-greentext: hsl(95, 38%, 46%);
   --color-green: #62a124;
+  --color-staff: #399ee6;
   --color-ambassador: #bf5f45;
   --color-grouplead: #f2ae49;
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.05);
@@ -169,6 +179,180 @@
   --color-gray-2: #d6d6d6;
   --color-gray-3: #777;
   --color-gray-4: #404040;
+  --color-member-box: var(--color-zinc-100);
+}
+
+/*
+ * The admin's own tokens. The theme entries above, and Tailwind's default
+ * scales, are what the member-facing form renderer from sharedweb is styled
+ * with, so the admin's tokens take new names instead of overriding them.
+ * Every colour is semantic: a dark theme is one more block of these values.
+ * `src/ui/tokens.test.ts` checks the contrast of the pairs in use.
+ */
+@theme {
+  --color-canvas: oklch(0.973 0.003 100);
+  --color-surface: oklch(1 0 0);
+  --color-surface-2: oklch(0.982 0.002 100);
+  --color-line: oklch(0.925 0.005 100);
+  --color-line-strong: oklch(0.86 0.007 100);
+  --color-line-control: oklch(0.62 0.01 270);
+  --color-fg: oklch(0.22 0.01 270);
+  --color-fg-muted: oklch(0.48 0.012 270);
+  /* The Alliance green (#62a124, oklch 0.64 0.166 133) darkened to read as text and under white. */
+  --color-accent: oklch(0.5 0.14 133);
+  --color-accent-hover: oklch(0.44 0.12 133);
+  --color-accent-fg: oklch(0.99 0 0);
+  --color-accent-soft: oklch(0.95 0.045 130);
+  /* The member app's navy (#081e40), its primary buttons' fill. */
+  --color-primary: oklch(0.24 0.07 259);
+  --color-primary-hover: oklch(0.3 0.094 259);
+  --color-on-primary: oklch(0.99 0 0);
+  /* Emerald, 30 degrees of hue from the accent, so done never reads as the brand. */
+  --color-success: oklch(0.52 0.11 165);
+  --color-success-soft: oklch(0.96 0.03 165);
+  --color-warning: oklch(0.53 0.12 70);
+  --color-warning-soft: oklch(0.96 0.04 80);
+  --color-danger: oklch(0.53 0.19 25);
+  --color-danger-hover: oklch(0.48 0.17 25);
+  --color-danger-soft: oklch(0.96 0.03 25);
+  --color-on-danger: oklch(0.99 0 0);
+  --color-info: oklch(0.51 0.12 235);
+  --color-info-soft: oklch(0.96 0.025 230);
+  --color-cat-1: oklch(0.55 0.19 265);
+  --color-cat-2: oklch(0.6 0.13 175);
+  --color-cat-3: oklch(0.64 0.16 60);
+  --color-cat-4: oklch(0.6 0.2 340);
+  --color-cat-5: oklch(0.62 0.12 230);
+  --color-cat-6: oklch(0.55 0.05 270);
+  --color-cat-1-soft: oklch(0.95 0.035 265);
+  --color-cat-2-soft: oklch(0.95 0.04 175);
+  --color-cat-3-soft: oklch(0.95 0.05 70);
+  --color-cat-4-soft: oklch(0.95 0.035 340);
+  --color-cat-5-soft: oklch(0.95 0.03 230);
+  --color-cat-6-soft: oklch(0.95 0.01 270);
+  /* Chart series: neighbours alternate dark and light, 3:1 apart, so they differ in grayscale. */
+  --color-chart-1: oklch(0.39 0.15 258);
+  --color-chart-2: oklch(0.67 0.14 55);
+  --color-chart-3: oklch(0.38 0.15 310);
+  --color-chart-4: oklch(0.645 0.11 190);
+  --color-chart-5: oklch(0.4 0.16 10);
+  --color-chart-6: oklch(0.65 0.12 120);
+  /* An ordered ramp for lines and marks, light to dark; every step reads on a surface. */
+  --color-seq-1: oklch(0.64 0.12 105);
+  --color-seq-2: oklch(0.6 0.12 150);
+  --color-seq-3: oklch(0.56 0.1 190);
+  --color-seq-4: oklch(0.51 0.11 235);
+  --color-seq-5: oklch(0.45 0.14 270);
+  --color-seq-6: oklch(0.39 0.15 300);
+  --color-seq-7: oklch(0.32 0.12 325);
+  /* A ramp for filled cells, low to high. Text is fg on 1 to 5, accent-fg on 6 and 7. */
+  --color-heat-1: oklch(0.97 0.015 255);
+  --color-heat-2: oklch(0.92 0.04 255);
+  --color-heat-3: oklch(0.85 0.07 255);
+  --color-heat-4: oklch(0.76 0.11 255);
+  --color-heat-5: oklch(0.66 0.14 257);
+  --color-heat-6: oklch(0.5 0.16 262);
+  --color-heat-7: oklch(0.37 0.13 265);
+  --color-hatch: oklch(0.88 0.006 270);
+  --color-scrim: rgb(0 0 0 / 0.12);
+  --color-overlay: rgb(0 0 0 / 0.2);
+
+  --font-ui: "Inter", system-ui, sans-serif;
+
+  --text-caption: 0.78125rem;
+  --text-caption--line-height: 1rem;
+  --text-body: 0.84375rem;
+  --text-body--line-height: 1.3125rem;
+  --text-heading: 1rem;
+  --text-heading--line-height: 1.5rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-stat: 1.75rem;
+  --text-stat--line-height: 2rem;
+
+  /* Density: the prototype's Comfortable setting. */
+  --spacing-control: 2.125rem;
+  --spacing-control-sm: 1.875rem;
+  --spacing-row: 2.875rem;
+  --spacing-th: 2.375rem;
+  --spacing-cell: 1rem;
+  --spacing-tab: 2.5rem;
+  --spacing-page: 2rem;
+  --spacing-page-top: 1.75rem;
+  --spacing-section: 1.25rem;
+  --spacing-card: 1.25rem;
+  --spacing-bar: 0.875rem;
+  /* The viewport minus the modal's p-4 on both sides. */
+  --spacing-dialog: calc(100dvh - 2rem);
+
+  --radius-card: 0.625rem;
+
+  --shadow-pop: 0 8px 24px -6px rgb(0 0 0 / 0.18), 0 0 0 1px var(--color-line);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root {
+  --duration-fast: 100ms;
+  --duration-base: 160ms;
+  --duration-slow: 220ms;
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* Pages not yet on the admin's components still take the accent for native controls and focus. */
+@layer base {
+  html {
+    accent-color: var(--color-accent);
+  }
+
+  :focus-visible {
+    outline-color: var(--color-accent);
+  }
+}
+
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+
+@utility duration-base {
+  transition-duration: var(--duration-base);
+}
+
+@utility duration-slow {
+  transition-duration: var(--duration-slow);
+}
+
+@utility transition-width {
+  transition-property: width;
+}
+
+/* A popup as wide as the control that opened it (Base UI sets the variable). */
+@utility w-anchor {
+  width: var(--anchor-width);
+}
+
+@utility scrollbar-stable {
+  scrollbar-gutter: stable;
+}
+
+/* Base UI's room between a popup's anchor and the window's edge. */
+@utility max-h-available {
+  max-height: var(--available-height);
+}
+
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 
 .none {
@@ -181,12 +365,40 @@
 
 html {
   overflow-x: hidden;
-  background-color: var(--color-page);
+  background-color: var(--color-canvas);
   overflow-y: overlay;
   scrollbar-color: #bbb transparent;
 }
 
+/* On body, not html: the root font size stays 16px so rem keeps its value. */
+body {
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  font-feature-settings: "cv11", "ss01";
+  color: var(--color-fg);
+  -webkit-font-smoothing: antialiased;
+}
+
 * {
+  font-family: var(--font-ui);
+}
+
+/*
+ * Member-facing content rendered inside the admin (form previews, the builder
+ * canvas, updates, contracts) keeps the type it had before the admin's own:
+ * what `body` sets above is reset here. Sits before the `.font-*` classes so
+ * they still win inside it.
+ */
+.member-surface {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-feature-settings: normal;
+  color: #000;
+  -webkit-font-smoothing: auto;
+}
+
+.member-surface,
+.member-surface * {
   font-family: "Source Sans 3", sans-serif;
 }
 

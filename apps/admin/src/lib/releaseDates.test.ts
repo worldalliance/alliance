@@ -53,6 +53,7 @@ describe("Pacific input round trip", () => {
 
   it("labels times as Pacific", () => {
     expect(formatPacific(pacific("2026-11-03T18:00"))).toBe(
+      // eslint-disable-next-line admin/test-clock -- date-fns format, always without a year
       "Tue Nov 3, 6:00 PM PT",
     );
   });

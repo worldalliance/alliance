@@ -1,7 +1,9 @@
 import type { ActionCompletionCurveDto } from "@alliance/shared/client/types.gen";
-import chroma from "chroma-js";
 import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
-import type { DataPoint, MultiLineSeries } from "../components/TimeSeriesChart";
+import { chartColor, SERIES } from "../ui/charts/chartColor";
+import type { DataPoint, MultiLineSeries } from "../ui/charts/types";
+
+export const AVERAGE_SERIES_KEY = "average";
 
 export type ActionCompletionCurveChartData = {
   multiLineData: MultiLineSeries[];
@@ -87,18 +89,13 @@ export function buildActionCompletionCurveChartData({
 
   const maxX = computeMaxOffset(durationFilteredCurves, isHourly);
 
-  const colorScale = chroma
-    .scale(["#0ea5e9", "#6366f1", "#14b8a6"])
-    .mode("lch")
-    .domain([0, Math.max(1, durationFilteredCurves.length - 1)]);
-
   const sumByBucket = new Array<number>(maxX + 1).fill(0);
   const countByBucket = new Array<number>(maxX + 1).fill(0);
 
   const actionSeries: MultiLineSeries[] = durationFilteredCurves
     .slice()
     .sort((a, b) => a.actionName.localeCompare(b.actionName))
-    .map((curve, index) => {
+    .map((curve) => {
       const data: DataPoint[] = [];
       let cumulativeFraction = 0;
       let cumulativeCount = 0;
@@ -173,7 +170,8 @@ export function buildActionCompletionCurveChartData({
       return {
         key: `action-${curve.actionId}`,
         label: curve.actionName,
-        color: chroma(colorScale(index)).alpha(0.45).css(),
+        // One task picked stands out beside the average; with every task shown, each is context for it.
+        color: selectedActionId === "all" ? chartColor.muted : SERIES[1],
         data,
       };
     });
@@ -211,9 +209,9 @@ export function buildActionCompletionCurveChartData({
     .filter((point): point is AveragePoint => point !== null);
 
   const averageSeries: MultiLineSeries = {
-    key: "average",
-    label: "Average trend",
-    color: "#111827",
+    key: AVERAGE_SERIES_KEY,
+    label: "Average",
+    color: SERIES[0],
     data: averageData,
   };
 

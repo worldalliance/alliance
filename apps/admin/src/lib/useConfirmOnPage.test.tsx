@@ -1,7 +1,7 @@
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, render, screen } from "@testing-library/react";
 import { StrictMode, useLayoutEffect, useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import { useConfirmOnPage } from "./useConfirmOnPage";
 
 let answer: Promise<boolean> | null = null;
@@ -90,7 +90,10 @@ describe("useConfirmOnPage", () => {
     renderAt("/items/2", <UnmountableAsker />);
     act(() => screen.getByRole("button", { name: "Send" }).click());
 
-    act(() => screen.getByRole("button", { name: "Hide" }).click());
+    // The open question makes the page behind it inert.
+    act(() =>
+      screen.getByRole("button", { name: "Hide", hidden: true }).click(),
+    );
 
     expect(await answer).toBe(false);
     expect(screen.queryByText("Send to members?")).toBeNull();

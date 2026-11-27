@@ -6,8 +6,8 @@ import {
 import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { useMemo } from "react";
-import type { FormulaSources } from "../components/FormulaSourcesContext";
-import type { InputSources } from "../components/VariableInputPickers";
+import type { FormulaSources } from "../pages/forms/builder/formulas/FormulaSourcesContext";
+import type { InputSources } from "../pages/forms/builder/formulas/VariableInputPickers";
 import { useFormulaSourceForms } from "./useFormulaSourceForms";
 
 export function useInputSources(params: {

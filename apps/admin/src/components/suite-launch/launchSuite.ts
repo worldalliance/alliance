@@ -6,12 +6,13 @@ import type {
 } from "@alliance/shared/client";
 import { DEFAULT_EVENT_NAMES } from "../../lib/actionStatusDisplay";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { fromApi } from "../../lib/fromApi";
 import { eventBeforeDeadline, existingLaunchEvent } from "./launchBlockers";
 import type { LaunchSchedule } from "./launchSchedule";
 
 export async function launchSuite(params: {
   /** Reads the suite fresh, so a launch from another tab or person shows. */
-  fetchSuite: () => Promise<Result<Pick<ActionSuiteDto, "events">, Error>>;
+  fetchSuite: () => Promise<Result<Pick<ActionSuiteDto, "events">, unknown>>;
   schedule: LaunchSchedule;
   reminderBodies: CreateReminderGroupDto[];
   /** Resolves `null` when staff decline to move a deadline earlier. */
@@ -41,7 +42,7 @@ export async function launchSuite(params: {
     latest.value.events.map((event) => event.id),
   );
 
-  const withMemberEvent = await R.fromPromise(
+  const withMemberEvent = await fromApi(
     addEvent({
       title: DEFAULT_EVENT_NAMES.member_action,
       description: "",
@@ -51,7 +52,7 @@ export async function launchSuite(params: {
   );
   if (!withMemberEvent.ok) {
     return R.failure(
-      `${adminRefusalMessage(withMemberEvent.error, "Failed to create the member action event")}. Nothing was launched.`,
+      `${adminRefusalMessage(withMemberEvent.error, "Couldn't create the members taking action event")}. Nothing was launched.`,
     );
   }
   if (!withMemberEvent.value) {
@@ -63,11 +64,11 @@ export async function launchSuite(params: {
   );
   if (!memberEvent) {
     return R.failure(
-      "Created the member action event but couldn't find it on the suite. Reload, then add the office action event and default reminders by hand.",
+      "Created the members taking action event but couldn't find it on the suite. Reload, then add the office taking action event and default reminders by hand.",
     );
   }
 
-  const withOfficeEvent = await R.fromPromise(
+  const withOfficeEvent = await fromApi(
     addEvent({
       title: DEFAULT_EVENT_NAMES.office_action,
       description: "",
@@ -80,11 +81,11 @@ export async function launchSuite(params: {
       ? "it was cancelled"
       : adminRefusalMessage(withOfficeEvent.error, "it failed");
     return R.failure(
-      `Created the member action event, but not the office action event (${reason}). Add it and the default reminders by hand.`,
+      `Created the members taking action event, but not the office taking action event (${reason}). Add it and the default reminders by hand.`,
     );
   }
 
-  const reminders = await R.fromPromise(
+  const reminders = await fromApi(
     createReminders({
       eventId: memberEvent.id,
       bodies: reminderBodies,
@@ -92,7 +93,7 @@ export async function launchSuite(params: {
   );
   if (!reminders.ok) {
     return R.failure(
-      `Created both events, but not all default reminders (${adminRefusalMessage(reminders.error, "they failed")}). Add the missing ones in Reminders on the suite page.`,
+      `Created both events, but not all default reminders (${adminRefusalMessage(reminders.error, "they failed")}). Add the missing ones on the suite's Reminders tab.`,
     );
   }
   return R.success(undefined);

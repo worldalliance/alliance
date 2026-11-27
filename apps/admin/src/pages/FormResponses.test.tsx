@@ -2,10 +2,10 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
+import { ToastProvider } from "../ui/ToastProvider";
 import FormResponses from "./FormResponses";
 
 let responsesStatus = 200;
@@ -80,15 +80,13 @@ it("says so when the responses fail to load", async () => {
   expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
 });
 
-it("toasts a failed refresh and keeps the responses up", async () => {
+it("shows a failed refresh in a banner and keeps the responses up", async () => {
   renderPage();
   expect(await screen.findByText("Withdrew")).toBeTruthy();
 
   responsesStatus = 500;
   fireEvent.click(screen.getByText("Refresh"));
 
-  expect(
-    await screen.findByText("Failed to refresh form responses"),
-  ).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh responses/)).toBeTruthy();
   expect(await screen.findByText("Withdrew")).toBeTruthy();
 });

@@ -1,0 +1,406 @@
+import type { ConditionHolder } from "@alliance/common/forms/form-conditions";
+import {
+  isQuestionField,
+  type FormSchema,
+} from "@alliance/common/forms/form-schema";
+import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { withCount } from "@alliance/common/plural";
+import { useEffect, useMemo } from "react";
+import { conditionSourceFields } from "../../../../lib/conditionSourceFields";
+import {
+  addressedWrite,
+  type BlockWriteById,
+} from "../../../../lib/displayBlockById";
+import { JsonScopeKind, type JsonScope } from "../../../../lib/formJson";
+import { type VisibilityGroups } from "../../../../lib/visibilityGroups";
+import type { ConditionFieldLookup } from "../../../../lib/visibilitySummary";
+import { PerViewerOptions } from "../blocks";
+import { renderBlockEditor } from "../blocks/blockEditors";
+import {
+  OverrideTargetContext,
+  type OverrideTarget,
+} from "../blocks/perUserContent";
+import { ElementBoundary, FlaggedSettings } from "../canvas/ElementBoundary";
+import {
+  ElementExpressionScope,
+  expressionKeys,
+} from "../conditions/expressionBuffers";
+import { renderFieldEditor } from "../questions/fieldEditors";
+import {
+  addressOf,
+  CanvasTargetKind,
+  ChildKind,
+  elementTarget,
+} from "../selection/canvasSelection";
+import type { CanvasEdits } from "../selection/useCanvasEdits";
+import {
+  InspectorScope,
+  type CanvasSelectionState,
+} from "../selection/useCanvasSelection";
+import { childWiring } from "./childActions";
+import { SelectChildProvider } from "./ChildRows";
+import { ChildSettings } from "./ChildSettings";
+import { DependencyLinks } from "./DependencyLinks";
+import { ElementSettings } from "./ElementSettings";
+import { FormScopeInspector } from "./FormScopeInspector";
+import { GreyBoxPanel } from "./GreyBoxPanel";
+import { InspectorHeader } from "./InspectorHeader";
+import { PageSettings, PageSettingsSidebar } from "./PageSettings";
+import { RangeSettings } from "./RangeSettings";
+import { SettingsSidebar } from "./SettingsSidebar";
+import { SidebarSection } from "./sidebarSections";
+import {
+  VisibilityGroupContext,
+  visibilityGroupMember,
+} from "./VisibilityGroupContext";
+import { VisibilityGroupSettings } from "./VisibilityGroupSettings";
+
+const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
+const RANGE_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
+
+export function FormBuilderSettings({
+  schema,
+  displayOnly,
+  visibilityGroups,
+  setGroups,
+  canvasGroups,
+  canvas,
+  edits,
+  updateBlockById,
+  conditionFieldOf,
+  summarize,
+  overrideTarget,
+  onEditJson,
+}: {
+  schema: FormSchema;
+  displayOnly: boolean;
+  visibilityGroups: VisibilityGroups;
+  setGroups: (groups: VisibilityGroups) => void;
+  canvasGroups: VisibilityGroups;
+  canvas: CanvasSelectionState;
+  edits: CanvasEdits;
+  updateBlockById: BlockWriteById;
+  conditionFieldOf: ConditionFieldLookup;
+  summarize: (formula: VisibleIfFormula) => string;
+  overrideTarget: OverrideTarget;
+  onEditJson: (scope: JsonScope) => void;
+}) {
+  const {
+    currentPage,
+    selectedPageIndex,
+    resolvedTarget,
+    selectionKey,
+    schemaLoads,
+    section,
+    setSection,
+    focusPending,
+    focused,
+    select,
+    selectFromOutline,
+  } = canvas;
+  const {
+    updateCurrentPage,
+    deleteElement,
+    applyGrouped,
+    updateElementAt,
+    selectChildOf,
+  } = edits;
+
+  // Deleting the selected block selects the page, which a display-only
+  // builder shows without settings to take the pending focus.
+  const nothingToFocus =
+    displayOnly && resolvedTarget.kind === CanvasTargetKind.Page;
+  useEffect(() => {
+    if (focusPending && nothingToFocus) focused();
+  }, [focusPending, nothingToFocus, focused]);
+
+  // Fields a page-level visibility condition can reference: anything answered
+  // before this page can show, i.e. fields on earlier pages.
+  const pagePreviousFields = useMemo(
+    () =>
+      schema.pages
+        .slice(0, selectedPageIndex)
+        .flatMap((page) => page.fields)
+        .filter(isQuestionField),
+    [schema.pages, selectedPageIndex],
+  );
+
+  const greyBox = (start: number, end: number) =>
+    !displayOnly && (
+      <GreyBoxPanel
+        fields={currentPage.fields}
+        start={start}
+        end={end}
+        onChange={(fields) => updateCurrentPage({ fields })}
+        onSelectBox={(box) =>
+          select(
+            box.end - box.start === 1
+              ? elementTarget(currentPage.fields[box.start]!, box.start)
+              : {
+                  kind: CanvasTargetKind.Range,
+                  anchor: addressOf(currentPage.fields[box.start]!, box.start),
+                  focus: addressOf(
+                    currentPage.fields[box.end - 1]!,
+                    box.end - 1,
+                  ),
+                },
+            SidebarSection.Content,
+          )
+        }
+      />
+    );
+
+  const renderElementEditor = (index: number) => {
+    const field = currentPage.fields[index];
+    if (!field) return null;
+    const updateField = updateElementAt(index);
+
+    const { previousFields, laterFields } = conditionSourceFields({
+      pages: schema.pages,
+      pageIndex: selectedPageIndex,
+      index,
+    });
+    const commonProps = {
+      onUpdate: updateField,
+      updateCurrent: addressedWrite(field, updateBlockById),
+      onRemove: () => deleteElement(index),
+      previousFields,
+      laterFields,
+    };
+    return (
+      <ElementExpressionScope
+        parent={expressionKeys.pageElements(currentPage.id)}
+        id={field.id}
+      >
+        <VisibilityGroupContext.Provider
+          value={
+            displayOnly
+              ? null
+              : visibilityGroupMember({
+                  element: field,
+                  groups: visibilityGroups,
+                  setGroups,
+                  summarize,
+                  onOpenGroup: (key) =>
+                    select(
+                      { kind: CanvasTargetKind.Group, key },
+                      SidebarSection.Conditions,
+                    ),
+                })
+          }
+        >
+          <PerViewerOptions allowed={!displayOnly}>
+            <SelectChildProvider value={selectChildOf(index)}>
+              {isQuestionField(field)
+                ? renderFieldEditor({ field, ...commonProps })
+                : renderBlockEditor({ block: field, ...commonProps })}
+            </SelectChildProvider>
+          </PerViewerOptions>
+        </VisibilityGroupContext.Provider>
+      </ElementExpressionScope>
+    );
+  };
+
+  const renderDependencies = (
+    item: ConditionHolder["formulas"],
+    questionId: string | null,
+  ) =>
+    !displayOnly && (
+      <DependencyLinks
+        pages={schema.pages}
+        groups={canvasGroups}
+        item={item}
+        questionId={questionId}
+        fieldOf={conditionFieldOf}
+        onSelect={(pageIndex, target) =>
+          selectFromOutline({
+            page: schema.pages[pageIndex]!,
+            pageIndex,
+            target,
+            section: SidebarSection.Conditions,
+          })
+        }
+      />
+    );
+
+  if (canvas.inspectorScope === InspectorScope.Form) {
+    return <FormScopeInspector />;
+  }
+
+  switch (resolvedTarget.kind) {
+    case CanvasTargetKind.Page:
+      return displayOnly ? (
+        <>
+          <InspectorHeader title="Content" />
+          <p className="px-card py-4 text-fg-muted">
+            Select a block on the canvas to edit it.
+          </p>
+        </>
+      ) : (
+        <PageSettingsSidebar
+          pageId={currentPage.id}
+          section={section}
+          onSection={setSection}
+          focusPending={focusPending}
+          onFocused={focused}
+          onEditJson={() =>
+            onEditJson({
+              kind: JsonScopeKind.Page,
+              pageIndex: selectedPageIndex,
+            })
+          }
+          dependencies={renderDependencies(currentPage, null)}
+        >
+          <PageSettings
+            key={`${currentPage.id}-${schemaLoads}`}
+            page={currentPage}
+            isFirstPage={selectedPageIndex === 0}
+            previousFields={pagePreviousFields}
+            onUpdate={updateCurrentPage}
+          />
+        </PageSettingsSidebar>
+      );
+    case CanvasTargetKind.Element: {
+      const { index, child } = resolvedTarget;
+      const element = currentPage.fields[index]!;
+      if (child) {
+        const sub =
+          child.kind === ChildKind.SubField && element.kind === "list"
+            ? element.fields[child.index]
+            : undefined;
+        return (
+          <ElementExpressionScope
+            parent={expressionKeys.pageElements(currentPage.id)}
+            id={element.id}
+          >
+            <ChildSettings
+              element={element}
+              child={child}
+              {...childWiring({
+                canvas,
+                edits,
+                updateBlockById,
+                element,
+                index,
+                child,
+              })}
+              section={section}
+              onSection={setSection}
+              focusPending={focusPending}
+              onFocused={focused}
+              editorKey={`${selectionKey}-${schemaLoads}`}
+              dependencies={sub && renderDependencies(sub, sub.id)}
+            />
+          </ElementExpressionScope>
+        );
+      }
+      return (
+        <ElementSettings
+          element={element}
+          displayOnly={displayOnly}
+          section={section}
+          onSection={setSection}
+          focusPending={focusPending}
+          onFocused={focused}
+          layout={greyBox(index, index + 1)}
+          dependencies={renderDependencies(
+            element,
+            isQuestionField(element) ? element.id : null,
+          )}
+        >
+          <div key={`${element.id || index}-${schemaLoads}`}>
+            <OverrideTargetContext.Provider value={overrideTarget}>
+              <ElementBoundary
+                element={element}
+                fallback={(message) => (
+                  <FlaggedSettings
+                    message={message}
+                    repair="Edit its JSON, or delete it, from More."
+                  />
+                )}
+              >
+                {() => renderElementEditor(index)}
+              </ElementBoundary>
+            </OverrideTargetContext.Provider>
+          </div>
+        </ElementSettings>
+      );
+    }
+    case CanvasTargetKind.Group:
+      return (
+        <SettingsSidebar
+          heading="Shared visibility"
+          sections={GROUP_SECTIONS}
+          section={section}
+          onSection={setSection}
+          focusPending={focusPending}
+          onFocused={focused}
+          dependencies={renderDependencies(
+            {
+              visibleIfFormula:
+                currentPage.fields[resolvedTarget.start]?.visibleIfFormula,
+            },
+            null,
+          )}
+        >
+          <VisibilityGroupSettings
+            key={`${resolvedTarget.key}-${schemaLoads}`}
+            schema={schema}
+            pageIndex={selectedPageIndex}
+            groupKey={resolvedTarget.key}
+            groups={visibilityGroups}
+            setGroups={setGroups}
+            applyGrouped={applyGrouped}
+            summarize={summarize}
+            onSelectMember={(memberIndex) =>
+              select(
+                elementTarget(currentPage.fields[memberIndex]!, memberIndex),
+                SidebarSection.Content,
+              )
+            }
+          />
+        </SettingsSidebar>
+      );
+    case CanvasTargetKind.Range: {
+      const { start, end } = resolvedTarget;
+      return (
+        <SettingsSidebar
+          heading={`${withCount(end - start, "element")} selected`}
+          sections={RANGE_SECTIONS}
+          layout={greyBox(start, end)}
+          section={section}
+          onSection={setSection}
+          focusPending={focusPending}
+          onFocused={focused}
+        >
+          <RangeSettings
+            key={`${selectionKey}-${schemaLoads}`}
+            schema={schema}
+            pageIndex={selectedPageIndex}
+            start={start}
+            end={end}
+            groups={visibilityGroups}
+            applyGrouped={applyGrouped}
+            summarize={summarize}
+            onSelectGroup={(key) =>
+              select(
+                { kind: CanvasTargetKind.Group, key },
+                SidebarSection.Conditions,
+              )
+            }
+            onSelectMember={(index) =>
+              select(
+                elementTarget(currentPage.fields[index]!, index),
+                SidebarSection.Content,
+              )
+            }
+          />
+        </SettingsSidebar>
+      );
+    }
+    default:
+      throw new Error(
+        `unknown target: ${JSON.stringify(resolvedTarget satisfies never)}`,
+      );
+  }
+}

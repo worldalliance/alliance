@@ -22,7 +22,7 @@ export function useCustomValidatorTypesAdmin() {
     validators: data,
     loading: isPending,
     error: error
-      ? adminRefusalMessage(error, "Failed to load validators")
+      ? adminRefusalMessage(error, "Couldn't load validators")
       : null,
   };
 }

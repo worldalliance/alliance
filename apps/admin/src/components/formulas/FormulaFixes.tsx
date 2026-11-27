@@ -3,9 +3,9 @@ import type {
   FormulaEditDto,
   FormulaProblemDto,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useRef } from "react";
 import { asDraft } from "../../lib/formulaDraft";
+import Button, { ButtonVariant } from "../../ui/Button";
 import FormulaFields from "./FormulaFields";
 import OtherFormulaProblems from "./OtherFormulaProblems";
 import PartFixFields, { partFixOf, type PartFixDraft } from "./PartFixFields";
@@ -19,20 +19,20 @@ const FixSection: React.FC<{
   onStop: () => void;
   children: React.ReactNode;
 }> = ({ id, focusFix, heading, onStop, children }) => (
-  <section className="border-t border-zinc-200 pt-4 space-y-2">
-    <div className="flex items-center gap-3">
-      <h2
+  <section className="flex flex-col gap-3 border-t border-line pt-4">
+    <div className="flex min-h-control items-center justify-between gap-3">
+      <h3
         ref={(element) => {
           if (element === null || focusFix.current !== id) return;
           focusFix.current = null;
           element.focus();
         }}
         tabIndex={-1}
-        className="font-semibold text-zinc-900"
+        className="min-w-0 rounded-sm font-semibold focus-ring"
       >
         {heading}
-      </h2>
-      <Button size="small" color={ButtonColor.White} onClick={onStop}>
+      </h3>
+      <Button size="small" variant={ButtonVariant.Default} onClick={onStop}>
         Stop fixing it
       </Button>
     </div>

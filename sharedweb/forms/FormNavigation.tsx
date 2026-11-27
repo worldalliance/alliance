@@ -5,7 +5,7 @@ import {
   waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
-import React from "react";
+import React, { useState } from "react";
 import BaseButton, {
   BaseButtonSize,
   BaseButtonVariant,
@@ -22,6 +22,7 @@ export default function FormNavigation({
   createAccountHref,
   onSubmit,
   onPreviewSubmit,
+  answers,
   submitting,
   submitLabel,
   uploadingImages,
@@ -39,7 +40,9 @@ export default function FormNavigation({
   createAccountHref?: string;
   /** `null` in preview, where the button only validates. */
   onSubmit: (() => Promise<boolean>) | null;
-  onPreviewSubmit: () => void;
+  onPreviewSubmit: () => Promise<{ isValid: boolean }>;
+  /** The answers Preview's check reads; a pass holds only while they are the same. */
+  answers: unknown;
   submitting: boolean;
   submitLabel: string;
   uploadingImages: boolean;
@@ -124,17 +127,12 @@ export default function FormNavigation({
                 )}
               </div>
             ) : (
-              <div className="w-full">
-                <BaseButton
-                  variant={BaseButtonVariant.Black}
-                  className="!cursor-not-allowed w-full"
-                  disabled={uploadingImages}
-                  onClick={onPreviewSubmit}
-                >
-                  {submitLabel}
-                  {" (Preview Mode)"}
-                </BaseButton>
-              </div>
+              <PreviewSubmit
+                label={submitLabel}
+                disabled={uploadingImages}
+                onCheck={onPreviewSubmit}
+                answers={answers}
+              />
             )}
           </>
         )}
@@ -152,6 +150,46 @@ export default function FormNavigation({
       </div>
 
       {children}
+    </div>
+  );
+}
+
+/**
+ * Preview's last button, which only checks the answers: an invalid one is
+ * shown where it is, and a pass says so until the answers change.
+ */
+function PreviewSubmit({
+  label,
+  disabled,
+  onCheck,
+  answers,
+}: {
+  label: string;
+  disabled: boolean;
+  onCheck: () => Promise<{ isValid: boolean }>;
+  answers: unknown;
+}) {
+  const [passedOn, setPassedOn] = useState<{ answers: unknown } | null>(null);
+  const passed = passedOn !== null && passedOn.answers === answers;
+  return (
+    <div className="flex w-full flex-col gap-y-2">
+      <BaseButton
+        variant={BaseButtonVariant.Black}
+        className="!cursor-not-allowed w-full"
+        disabled={disabled}
+        onClick={() => {
+          void onCheck().then((result) =>
+            setPassedOn(result.isValid ? { answers } : null),
+          );
+        }}
+      >
+        {label}
+        {" (preview)"}
+      </BaseButton>
+      <p role="status" className="text-sm text-zinc-600">
+        {passed &&
+          "Every answer is valid. A member would submit here; in preview nothing is sent."}
+      </p>
     </div>
   );
 }

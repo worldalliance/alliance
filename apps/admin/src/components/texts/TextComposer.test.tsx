@@ -1,5 +1,4 @@
 import { resetClock } from "@alliance/shared/lib/useClockMinute";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -10,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { MmsThreadsLiveContext, OFFLINE } from "../../lib/mmsThreadsLive";
+import { ToastProvider } from "../../ui/ToastProvider";
 import TextComposer from "./TextComposer";
 
 afterEach(resetClock);
@@ -116,7 +116,7 @@ it("keeps focus on Send while a send is in flight, sending once", async () => {
   send.focus();
 
   fireEvent.click(send);
-  const sending = screen.getByRole("button", { name: "Sending…" });
+  const sending = screen.getByRole("button", { name: "Send" });
   expect(sending.getAttribute("aria-disabled")).toBe("true");
   expect(document.activeElement).toBe(sending);
   fireEvent.click(sending);

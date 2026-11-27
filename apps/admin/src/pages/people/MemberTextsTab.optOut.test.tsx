@@ -1,0 +1,346 @@
+import type { MmsThreadDto } from "@alliance/shared/client/types.gen";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import type { QueryClient } from "@tanstack/react-query";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { milliseconds } from "date-fns";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { MemberTextsTab } from "./MemberTextsTab";
+
+const textable = (phoneNumber: string): MmsThreadDto => ({
+  threadId: null,
+  phoneNumber,
+  textable: true,
+  optedOut: false,
+  replyState: "answered",
+  messages: [],
+  hasOlder: false,
+});
+
+let thread: MmsThreadDto;
+let optOuts: number;
+let optOutRefusal: string | null;
+let optedOutElsewhere: boolean;
+let optOutGate: Promise<void>;
+let kimThread: MmsThreadDto;
+let kimOptOutGate: Promise<void>;
+
+serveApi(
+  routes({
+    "GET /mms-threads/7": () => Response.json(thread),
+    "GET /mms-threads/8": () => Response.json(kimThread),
+    "POST /mms-threads/8/opt-out": async () => {
+      await kimOptOutGate;
+      kimThread = { ...kimThread, optedOut: true };
+      return new Response(null, { status: 204 });
+    },
+    "POST /mms-threads/7/opt-out": async () => {
+      optOuts += 1;
+      await optOutGate;
+      if (optedOutElsewhere) {
+        thread = { ...thread, optedOut: true };
+        return Response.json(
+          { message: "This number has opted out of texts." },
+          { status: 409 },
+        );
+      }
+      if (optOutRefusal)
+        return Response.json({ message: optOutRefusal }, { status: 400 });
+      thread = { ...thread, optedOut: true };
+      return new Response(null, { status: 204 });
+    },
+  }),
+);
+
+beforeEach(() => {
+  thread = textable("+14155550123");
+  optOuts = 0;
+  optOutRefusal = null;
+  optedOutElsewhere = false;
+  optOutGate = Promise.resolve();
+  kimThread = textable("+14155550188");
+  kimOptOutGate = Promise.resolve();
+});
+
+const SAM = { id: 7, name: "Sam" };
+const KIM = { id: 8, name: "Kim" };
+
+const renderSection = () => {
+  const { wrapper: Wrapper, client } = queryWrapper();
+  client.setQueryData(queryKeys.needsReplyAdmin(), []);
+  const section = (member: { id: number; name: string }) => (
+    <Wrapper>
+      <ToastProvider>
+        <MemberTextsTab member={{ ...member, timeZone: null }} />
+      </ToastProvider>
+    </Wrapper>
+  );
+  const { rerender } = render(section(SAM));
+  return {
+    client,
+    show: (member: { id: number; name: string }) => rerender(section(member)),
+    unmount: () => rerender(<Wrapper>Loading member...</Wrapper>),
+  };
+};
+
+const confirmMarkOptedOut = async () => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Mark opted out" }),
+  );
+  const buttons = await screen.findAllByRole("button", {
+    name: "Mark opted out",
+  });
+  fireEvent.click(buttons[buttons.length - 1]);
+};
+
+it("says the opt-out is pending while it is", async () => {
+  optOutGate = new Promise(() => {});
+  renderSection();
+  await confirmMarkOptedOut();
+
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBe("true"),
+  );
+});
+
+it("frees the next member's opt-out control while one is pending", async () => {
+  optOutGate = new Promise(() => {});
+  const { show } = renderSection();
+  await confirmMarkOptedOut();
+  await waitFor(() => expect(optOuts).toBe(1));
+
+  show(KIM);
+
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBeNull(),
+  );
+});
+
+it("still shows the opt-out pending after the section remounts mid-request", async () => {
+  optOutGate = new Promise(() => {});
+  const { show, unmount } = renderSection();
+  await confirmMarkOptedOut();
+  await waitFor(() => expect(optOuts).toBe(1));
+
+  unmount();
+  show(SAM);
+
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBe("true"),
+  );
+});
+
+it("marks the member the opt-out was made for when it lands after the page moves on", async () => {
+  let openGate = () => {};
+  optOutGate = new Promise((resolve) => (openGate = resolve));
+  const { client, show } = renderSection();
+  await confirmMarkOptedOut();
+  await waitFor(() => expect(optOuts).toBe(1));
+
+  show(KIM);
+  await screen.findByRole("button", { name: "Mark opted out" });
+  openGate();
+
+  const cached = (userId: number) =>
+    client.getQueryData<MmsThreadDto>(queryKeys.memberTextThreadAdmin(userId))
+      ?.optedOut;
+  await waitFor(() => expect(cached(SAM.id)).toBe(true));
+  expect(cached(KIM.id)).toBe(false);
+  expect(screen.queryByText("Opted out")).toBeNull();
+  expect(screen.getByLabelText("Text Kim")).toBeTruthy();
+  show(SAM);
+  expect(await screen.findByText("Opted out")).toBeTruthy();
+});
+
+const needsReplyInvalidated = (client: QueryClient) =>
+  client.getQueryState(queryKeys.needsReplyAdmin())?.isInvalidated;
+
+it("marks a member opted out after confirming and refreshes Needs Reply", async () => {
+  const { client } = renderSection();
+  await confirmMarkOptedOut();
+
+  await waitFor(() => expect(optOuts).toBe(1));
+  expect(await screen.findByText("Opted out")).toBeTruthy();
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByText("Opted out").parentElement,
+    ),
+  );
+  await waitFor(() => expect(needsReplyInvalidated(client)).toBe(true));
+  expect(screen.queryByLabelText("Text Sam")).toBeNull();
+});
+
+it("moves focus to the badge only once, not on a later visit", async () => {
+  const { show } = renderSection();
+  await confirmMarkOptedOut();
+  const badge = (await screen.findByText("Opted out")).parentElement;
+  await waitFor(() => expect(document.activeElement).toBe(badge));
+  badge?.blur();
+
+  show(KIM);
+  await screen.findByRole("button", { name: "Mark opted out" });
+  show(SAM);
+
+  await screen.findByText("Opted out");
+  expect(document.activeElement).toBe(document.body);
+});
+
+it("leaves focus where staff moved it when the opt-out lands", async () => {
+  let openGate = () => {};
+  optOutGate = new Promise((resolve) => (openGate = resolve));
+  renderSection();
+  await confirmMarkOptedOut();
+  await waitFor(() => expect(optOuts).toBe(1));
+  const history = screen.getByRole("region", { name: "Text history" });
+  act(() => history.focus());
+
+  openGate();
+
+  await screen.findByText("Opted out");
+  expect(document.activeElement).toBe(history);
+});
+
+it("still focuses the next member's badge after an earlier opt-out fails", async () => {
+  let openSamGate = () => {};
+  optOutGate = new Promise((resolve) => (openSamGate = resolve));
+  let openKimGate = () => {};
+  kimOptOutGate = new Promise((resolve) => (openKimGate = resolve));
+  optOutRefusal = "This phone number can't receive texts from staff.";
+  const { show } = renderSection();
+  await confirmMarkOptedOut();
+  await waitFor(() => expect(optOuts).toBe(1));
+
+  show(KIM);
+  await confirmMarkOptedOut();
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBe("true"),
+  );
+  openSamGate();
+  await screen.findByText("Problem marking Sam opted out");
+  act(() => {
+    if (document.activeElement instanceof HTMLElement)
+      document.activeElement.blur();
+  });
+  openKimGate();
+
+  const badge = (await screen.findByText("Opted out")).parentElement;
+  await waitFor(() => expect(document.activeElement).toBe(badge));
+});
+
+const texts = () => screen.getByRole("region", { name: "Texts" });
+
+it("keeps a failed opt-out out of the next member's conversation", async () => {
+  optOutRefusal = "This phone number can't receive texts from staff.";
+  const { show } = renderSection();
+  await confirmMarkOptedOut();
+  await screen.findByText("Problem marking Sam opted out");
+
+  show(KIM);
+  await screen.findByLabelText("Text Kim");
+
+  expect(texts().textContent).not.toContain("Problem marking Sam");
+});
+
+it("tells staff about an opt-out that fails after they move on, outside the next conversation", async () => {
+  let openGate = () => {};
+  optOutGate = new Promise((resolve) => (openGate = resolve));
+  optOutRefusal = "This phone number can't receive texts from staff.";
+  const { show } = renderSection();
+  await confirmMarkOptedOut();
+  await waitFor(() => expect(optOuts).toBe(1));
+
+  show(KIM);
+  await screen.findByLabelText("Text Kim");
+  openGate();
+
+  await screen.findByText("Problem marking Sam opted out");
+  expect(texts().textContent).not.toContain("Problem marking Sam");
+});
+
+it("leaves a member subscribed when the confirmation is cancelled", async () => {
+  renderSection();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Mark opted out" }),
+  );
+  expect(
+    await screen.findByText(/Anyone else with this phone number/),
+  ).toBeTruthy();
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull(),
+  );
+  expect(optOuts).toBe(0);
+  expect(screen.getByRole("button", { name: "Mark opted out" })).toBeTruthy();
+});
+
+it("says why a member wasn't marked opted out, until dismissed", async () => {
+  jest.useFakeTimers();
+  try {
+    optOutRefusal = "This phone number can't receive texts from staff.";
+    renderSection();
+    await confirmMarkOptedOut();
+    await screen.findByText(
+      "This phone number can't receive texts from staff.",
+    );
+
+    act(() => jest.advanceTimersByTime(milliseconds({ minutes: 1 })));
+
+    expect(
+      screen.getByText("This phone number can't receive texts from staff."),
+    ).toBeTruthy();
+    expect(screen.getByText("Problem marking Sam opted out")).toBeTruthy();
+    expect(screen.queryByText("Opted out")).toBeNull();
+    expect(screen.getByRole("button", { name: "Mark opted out" })).toBeTruthy();
+  } finally {
+    // The preload's afterEach restore comes too late: with fake timers
+    // still on at teardown, the next tests' thread fetch never resolves.
+    jest.useRealTimers();
+  }
+});
+
+it("refreshes the thread after a failed opt-out, so a changed number shows", async () => {
+  optOutRefusal = "This phone number can't receive texts from staff.";
+  renderSection();
+  await screen.findByRole("button", { name: "Mark opted out" });
+  thread = { ...thread, textable: false };
+  await confirmMarkOptedOut();
+
+  await screen.findByText("Problem marking Sam opted out");
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Mark opted out" })).toBeNull(),
+  );
+});
+
+it("shows a member who opted out elsewhere as opted out, without an error", async () => {
+  optedOutElsewhere = true;
+  renderSection();
+  await confirmMarkOptedOut();
+
+  expect(await screen.findByText("Opted out")).toBeTruthy();
+  expect(screen.queryByLabelText("Text Sam")).toBeNull();
+  expect(screen.queryByText("Problem marking Sam opted out")).toBeNull();
+});

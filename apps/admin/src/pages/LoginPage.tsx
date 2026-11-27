@@ -49,27 +49,27 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-page">
+    <div className="min-h-screen flex flex-col bg-surface-2">
       <div className="flex flex-col flex-grow items-center justify-center">
         <div className="w-full max-w-md px-8">
           {error && (
-            <div className="border-red-400 bg-red-50 mb-6 rounded-md p-4">
+            <div className="bg-danger-soft mb-6 rounded-md p-4">
               <div className="flex justify-between items-center">
-                <span className="text-red-700">{error}</span>
+                <span className="text-danger">{error}</span>
               </div>
             </div>
           )}
 
-          <div className="p-8 bg-white rounded-md border border-zinc-300">
+          <div className="p-8 bg-surface rounded-md border border-line-strong">
             {checkingServer ? (
               <div className="text-center py-6">
-                <p className="text-gray-600">Checking server status...</p>
+                <p className="text-fg-muted">Checking server status...</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <input
-                    className="w-full rounded-md border border-gray-300 p-3"
+                    className="w-full rounded-md border border-line-strong p-3"
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
@@ -81,7 +81,7 @@ const LoginPage: React.FC = () => {
                 </div>
                 <div>
                   <input
-                    className="w-full rounded-md border border-gray-300 p-3"
+                    className="w-full rounded-md border border-line-strong p-3"
                     type="password"
                     value={formData.password}
                     onChange={handleChange}
@@ -94,7 +94,7 @@ const LoginPage: React.FC = () => {
 
                 <div className="pt-2">
                   <button
-                    className="w-full flex justify-center text-center py-2 bg-black text-white rounded-md font-medium"
+                    className="w-full flex justify-center text-center py-2 bg-fg text-surface rounded-md font-medium"
                     type="submit"
                     disabled={loading}
                   >

@@ -43,10 +43,15 @@ export const outlineSchema: FormSchema = {
   aggregateViews: [],
 };
 
-export const entry = (name: string) => outline().getByRole("button", { name });
+export const entry = (name: string | RegExp) =>
+  outline().getByRole("treeitem", { name });
 export const entries = () =>
   outline()
-    .getAllByRole("button", { name: /^(?!Contents of|Add page)/ })
-    .map((button) => button.textContent);
-export const contents = (name: string) =>
-  outline().getByRole("button", { name: `Contents of ${name}` });
+    .getAllByRole("treeitem")
+    .map((row) => row.getAttribute("aria-label"));
+/** The chevron that shows or hides what the entry named `name` holds. */
+export const contents = (name: string | RegExp) => {
+  const toggle = entry(name).querySelector<HTMLElement>("[data-toggle]");
+  if (!toggle) throw new Error(`${String(name)} holds nothing to show`);
+  return toggle;
+};

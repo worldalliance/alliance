@@ -10,9 +10,9 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { RenderField } from "@alliance/sharedweb/forms/RenderField";
-import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { linkCheckedText } from "./linkCheckedText";
 import { stringsIn } from "./useContentConfirm";
 

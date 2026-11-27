@@ -69,7 +69,8 @@ function useFormsQuery() {
 
 export function useFormsAdmin() {
   const invalidateForms = useInvalidateFormsAdmin();
-  const { data, isLoading, isError } = useFormsQuery();
+  const { data, isLoading, isError, error, isFetching, refetch } =
+    useFormsQuery();
 
   const { mutateAsync: deleteForm } = useMutation({
     mutationFn: (id: number) =>
@@ -79,7 +80,15 @@ export function useFormsAdmin() {
     onSuccess: invalidateForms,
   });
 
-  return { forms: data ?? NO_FORMS, isLoading, isError, deleteForm };
+  return {
+    forms: data ?? NO_FORMS,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+    refetch,
+    deleteForm,
+  };
 }
 
 // A new form has no cached field lists or counts yet, only an index to join.

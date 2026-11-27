@@ -7,9 +7,9 @@ import {
   type UpdateActionEventDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useToast } from "../ui/ToastProvider";
 import { adminRefusalMessage } from "./adminRefusal";
 import {
   dataOrThrow,
@@ -33,7 +33,7 @@ const suiteQuery = (suiteId: number) =>
 export function useActionSuiteAdmin(suiteId: number) {
   const { confirm } = useToast();
   const query = useMemo(() => suiteQuery(suiteId), [suiteId]);
-  const suite = useQuery(query);
+  const suite = useQuery({ ...query, enabled: Number.isSafeInteger(suiteId) });
   const patchSuite = usePatchQueryData(query.queryKey);
 
   const addEvent = useMutation({

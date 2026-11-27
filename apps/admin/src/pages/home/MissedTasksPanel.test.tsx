@@ -1,0 +1,85 @@
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import { MissedTasksPanel } from "./MissedTasksPanel";
+
+let missedActionsStatus = 200;
+let missedActionsRequests = 0;
+
+serveApi(
+  routes({
+    "GET /analytics/missed-actions": () => {
+      missedActionsRequests += 1;
+      return missedActionsStatus === 200
+        ? Response.json({
+            missedLastAction: [
+              { userId: 7, name: "Ada Member", lastActionName: "Call a rep" },
+            ],
+            missedLastTwoActions: [],
+          })
+        : Response.json({}, { status: missedActionsStatus });
+    },
+  }),
+);
+
+afterEach(() => {
+  missedActionsStatus = 200;
+  missedActionsRequests = 0;
+});
+
+const renderPanel = () =>
+  render(
+    <MemoryRouter>
+      <MissedTasksPanel />
+    </MemoryRouter>,
+    queryWrapper(),
+  );
+
+describe("MissedTasksPanel", () => {
+  it("lists each group's members once requested", async () => {
+    renderPanel();
+    expect(screen.queryByText("Missed last task")).toBeNull();
+    expect(missedActionsRequests).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "View members" }));
+
+    const member = await screen.findByRole("link", { name: "Ada Member" });
+    expect(member.getAttribute("href")).toBe("/members/7");
+    expect(screen.getByText("Missed last two tasks")).toBeTruthy();
+    expect(screen.getByText("No members.")).toBeTruthy();
+  });
+
+  it("reloads on each later click", async () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "View members" }));
+    await screen.findByRole("link", { name: "Ada Member" });
+
+    fireEvent.click(screen.getByRole("button", { name: "View members" }));
+
+    await waitFor(() => expect(missedActionsRequests).toBe(2));
+  });
+
+  it("says the load failed", async () => {
+    missedActionsStatus = 500;
+    renderPanel();
+
+    fireEvent.click(screen.getByRole("button", { name: "View members" }));
+
+    await screen.findByText("Couldn't load missed tasks");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
+  });
+
+  it("says the load failed when a reload fails", async () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "View members" }));
+    await screen.findByRole("link", { name: "Ada Member" });
+
+    missedActionsStatus = 500;
+    fireEvent.click(screen.getByRole("button", { name: "View members" }));
+
+    await screen.findByText("Couldn't load missed tasks");
+    expect(screen.queryByRole("link", { name: "Ada Member" })).toBeNull();
+  });
+});

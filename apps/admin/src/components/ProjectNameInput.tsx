@@ -1,6 +1,8 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useState } from "react";
+import Button, { ButtonVariant } from "../ui/Button";
+import { Input } from "../ui/Input";
 
+/** An inline name field with Save and Cancel; Enter saves, Escape cancels. */
 export function ProjectNameInput({
   initialName,
   placeholder,
@@ -20,12 +22,12 @@ export function ProjectNameInput({
     if (trimmed) onSave(trimmed);
   };
   return (
-    <div className="flex flex-row items-center gap-1">
-      <input
+    <div className="flex items-center gap-1.5">
+      <Input
         type="text"
         aria-label={placeholder}
         placeholder={placeholder}
-        className="w-64 border border-gray-2 rounded px-3 py-1.5 text-sm"
+        className="w-64"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         // Read-only rather than disabled, so a failed save leaves focus here.
@@ -42,18 +44,17 @@ export function ProjectNameInput({
         }}
       />
       <Button
-        color={ButtonColor.Blue}
+        variant={ButtonVariant.Primary}
         onClick={save}
-        disabled={saving || !trimmed}
-        className="!px-3 !text-sm"
+        busy={saving}
+        disabled={!trimmed}
       >
-        {saving ? "Saving…" : "Save"}
+        Save
       </Button>
       <Button
-        color={ButtonColor.White}
+        variant={ButtonVariant.Default}
         onClick={onCancel}
         disabled={saving}
-        className="!px-3 !text-sm"
       >
         Cancel
       </Button>

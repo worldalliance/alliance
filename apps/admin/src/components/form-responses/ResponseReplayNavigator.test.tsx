@@ -1,7 +1,8 @@
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ResponseReplayNavigator from "./ResponseReplayNavigator";
 import {
+  RESPONDENT_RESULT_LIMIT,
   useRespondentSearch,
   type RespondentSearch,
 } from "./useRespondentSearch";
@@ -16,12 +17,8 @@ const search = (
 ): RespondentSearch => ({
   query: "",
   setQuery: jest.fn(),
-  open: false,
-  setOpen: jest.fn(),
-  containerRef: { current: null },
   results: [],
   select: jest.fn(),
-  handleKeyDown: jest.fn(),
   ...overrides,
 });
 
@@ -48,55 +45,115 @@ const Navigator = ({
 const renderNavigator = (respondentSearch: RespondentSearch) =>
   render(<Navigator respondentSearch={respondentSearch} />);
 
-const WithSearch = () => (
-  <Navigator
-    respondentSearch={useRespondentSearch({
-      responses: [response],
-      getRespondentName: () => "Ana",
-      onSelect: () => {},
-    })}
-  />
-);
-
 it("shows the filter, the current respondent and their session replay", () => {
-  const open = jest.spyOn(window, "open").mockImplementation(() => null);
   renderNavigator(search());
 
-  expect(screen.getByText("(1 of 3)")).toBeTruthy();
+  expect(screen.getByText("1 of 3 responses")).toBeTruthy();
   expect(screen.getByText("Ana")).toBeTruthy();
   expect(screen.getByText("Short")).toBeTruthy();
-  fireEvent.click(screen.getByText("Replay"));
-  expect(open).toHaveBeenCalledWith(
+  const recording = screen.getByRole("link", {
+    name: /Watch session recording/,
+  });
+  expect(recording.getAttribute("href")).toBe(
     "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=abc123",
-    "_blank",
   );
-  open.mockRestore();
+  expect(recording.getAttribute("rel")).toBe("noopener noreferrer");
 });
 
-it("lists search results and selects the one clicked", () => {
+const openList = () => {
+  const box = screen.getByRole("combobox", { name: "Find a respondent" });
+  fireEvent.keyDown(box, { key: "ArrowDown" });
+  return box;
+};
+
+it("lists search results, marks the one showing and selects the one clicked", async () => {
   const respondentSearch = search({
-    open: true,
-    results: [{ response, idx: 0, name: "Ana Search" }],
+    results: [
+      { response, idx: 0, name: "Ana Search" },
+      { response, idx: 1, name: "Ben Search" },
+    ],
   });
   renderNavigator(respondentSearch);
-  fireEvent.click(screen.getByText("Ana Search"));
+  openList();
+  await waitFor(() => expect(screen.getAllByRole("option").length).toBe(2));
+  expect(screen.getAllByRole("option")[0]?.textContent).toContain("Showing");
+  expect(screen.getAllByRole("option")[1]?.textContent).not.toContain(
+    "Showing",
+  );
+  fireEvent.click(screen.getByText("Ben Search"));
 
-  expect(respondentSearch.select).toHaveBeenCalledWith(0);
+  expect(respondentSearch.select).toHaveBeenCalledWith(1);
 });
 
-it("says when no response matches the search", () => {
-  renderNavigator(search({ open: true }));
-
-  expect(screen.getByText("No matching responses")).toBeTruthy();
-});
-
-it("opens the results as the search is typed and closes them on a click outside", () => {
-  render(<WithSearch />);
-  fireEvent.change(screen.getByPlaceholderText("Search by name..."), {
-    target: { value: "an" },
+it("selects the highlighted result with the keyboard", async () => {
+  const respondentSearch = search({
+    results: [
+      { response, idx: 0, name: "Ana Search" },
+      { response, idx: 1, name: "Ben Search" },
+    ],
   });
-  expect(screen.getAllByText("Ana")).toHaveLength(2);
+  renderNavigator(respondentSearch);
+  const box = openList();
+  await waitFor(() => expect(screen.getAllByRole("option").length).toBe(2));
+  fireEvent.keyDown(box, { key: "ArrowDown" });
+  fireEvent.keyDown(box, { key: "Enter" });
 
-  fireEvent.mouseDown(document.body);
-  expect(screen.getAllByText("Ana")).toHaveLength(1);
+  expect(respondentSearch.select).toHaveBeenCalledWith(1);
+});
+
+it("says when no response matches the search", async () => {
+  renderNavigator(search());
+  openList();
+
+  await waitFor(() =>
+    expect(screen.getByText("No matching responses")).toBeTruthy(),
+  );
+});
+
+it("shows only the first results and says how many more there are", async () => {
+  const results = Array.from(
+    { length: RESPONDENT_RESULT_LIMIT + 3 },
+    (_, idx) => ({ response, idx, name: `Person ${idx}` }),
+  );
+  renderNavigator(search({ results }));
+  openList();
+
+  await waitFor(() =>
+    expect(screen.getAllByRole("option").length).toBe(
+      RESPONDENT_RESULT_LIMIT + 1,
+    ),
+  );
+  expect(
+    screen.getByText("3 more. Type a name to narrow the list."),
+  ).toBeTruthy();
+});
+
+it("passes what is typed to the search", () => {
+  const setQuery = jest.fn();
+  renderNavigator(search({ setQuery }));
+  const box = openList();
+  fireEvent.input(box, { target: { value: "an" } });
+
+  expect(setQuery.mock.calls[0]?.[0]).toBe("an");
+});
+
+it("picks a typed match and clears the box", async () => {
+  const onSelect = jest.fn();
+  const WithSearch = () => (
+    <Navigator
+      respondentSearch={useRespondentSearch({
+        responses: [response],
+        getRespondentName: () => "Ana",
+        onSelect,
+      })}
+    />
+  );
+  render(<WithSearch />);
+  const box = openList();
+  fireEvent.input(box, { target: { value: "an" } });
+  await waitFor(() => expect(screen.getAllByRole("option").length).toBe(1));
+  fireEvent.keyDown(box, { key: "Enter" });
+
+  expect(onSelect).toHaveBeenCalledWith(0);
+  await waitFor(() => expect((box as HTMLInputElement).value).toBe(""));
 });

@@ -1,8 +1,8 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import FormResponseStatistics from "./FormResponseStatistics";
 
 const schema: FormSchema = {
@@ -36,6 +36,8 @@ it("counts every choice any response saved, under the label saved first", () => 
     <SiteOriginLinkProvider origin="https://worldalliance.org">
       <FormResponseStatistics
         form={{ id: 1, title: "Form", formSnapshotId: 7, schema }}
+        loading={false}
+        error={null}
         responses={[
           response({
             id: 2,
@@ -63,4 +65,93 @@ it("counts every choice any response saved, under the label saved first", () => 
   expect(screen.getByText("Beta")).toBeTruthy();
   expect(screen.queryByText("Renamed A")).toBeNull();
   expect(screen.queryByText(/Unknown option/)).toBeNull();
+});
+
+it("filters the replays by the answer whose bar is pressed", () => {
+  const onFilterSelect = jest.fn();
+  render(
+    <SiteOriginLinkProvider origin="https://worldalliance.org">
+      <FormResponseStatistics
+        form={{ id: 1, title: "Form", formSnapshotId: 7, schema }}
+        loading={false}
+        error={null}
+        responses={[
+          response({
+            id: 1,
+            createdAt: "2026-03-04T10:00:00.000Z",
+            answers: { pick: ["a"] },
+            formulaChoices: { pick: [{ label: "Alpha", value: "a" }] },
+          }),
+        ]}
+        onFilterSelect={onFilterSelect}
+      />
+    </SiteOriginLinkProvider>,
+  );
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: /Alpha.*Show these responses in Replays/,
+    }),
+  );
+
+  expect(onFilterSelect).toHaveBeenCalledWith({
+    fieldId: "pick",
+    op: "includes",
+    value: "a",
+  });
+});
+
+it("offers no answer to select when no bar is a button", () => {
+  const numberSchema: FormSchema = {
+    pages: [
+      {
+        id: "page-1",
+        fields: [{ id: "age", type: "input", kind: "number", label: "Age" }],
+      },
+    ],
+    outputViews: [],
+  };
+  render(
+    <SiteOriginLinkProvider origin="https://worldalliance.org">
+      <FormResponseStatistics
+        form={{ id: 1, title: "Form", formSnapshotId: 7, schema: numberSchema }}
+        loading={false}
+        error={null}
+        responses={[1, 2, 3].map((age) =>
+          makeFormResponse({
+            id: age,
+            formSnapshotId: 7,
+            schemaSnapshot: numberSchema,
+            answers: { age },
+          }),
+        )}
+        onFilterSelect={jest.fn()}
+      />
+    </SiteOriginLinkProvider>,
+  );
+
+  expect(screen.getByText("Age")).toBeTruthy();
+  expect(screen.queryByText(/Select an answer/)).toBeNull();
+});
+
+it("says nothing about responses until they load", () => {
+  const view = render(
+    <FormResponseStatistics
+      form={{ id: 1, title: "Form", formSnapshotId: 7, schema }}
+      responses={[]}
+      loading
+      error={null}
+    />,
+  );
+  expect(screen.queryByText("No responses yet")).toBeNull();
+
+  view.rerender(
+    <FormResponseStatistics
+      form={{ id: 1, title: "Form", formSnapshotId: 7, schema }}
+      responses={[]}
+      loading={false}
+      error="The server didn't answer."
+    />,
+  );
+  expect(screen.getByText("Couldn't load responses")).toBeTruthy();
+  expect(screen.queryByText("No responses yet")).toBeNull();
 });

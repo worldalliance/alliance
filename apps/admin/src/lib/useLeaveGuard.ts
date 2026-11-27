@@ -31,13 +31,19 @@ export function useLeaveGuard(
   options: {
     /** For state that survives a change of search params on the same path. */
     allowSamePath?: boolean;
+    /**
+     * Search params whose change alone leaves this guard's state in place,
+     * such as a peek opened over the page.
+     */
+    ignoreParams?: readonly string[];
   } = {},
 ) {
   const guards = useContext(LeaveGuardContext);
   if (!guards) {
     throw new Error("useLeaveGuard needs a LeaveGuard above it");
   }
-  const { allowSamePath = false } = options;
+  const { allowSamePath = false, ignoreParams } = options;
+  const ignored = ignoreParams?.join("&");
   const bypassed = useRef(false);
   const departedTo = useRef<string>(undefined);
   const { key } = useLocation();
@@ -68,14 +74,23 @@ export function useLeaveGuard(
           departedTo.current === currentLocation.key &&
           currentLocation.key !== key
         ) &&
-        !(allowSamePath && currentLocation.pathname === nextLocation.pathname)
+        !(
+          currentLocation.pathname === nextLocation.pathname &&
+          (allowSamePath ||
+            (ignored !== undefined &&
+              sameParamsWithout({
+                a: currentLocation.search,
+                b: nextLocation.search,
+                ignored: ignored.split("&"),
+              })))
+        )
       );
     };
     guards.add(guard);
     return () => {
       guards.delete(guard);
     };
-  }, [guards, dirty, allowSamePath, key]);
+  }, [guards, dirty, allowSamePath, ignored, key]);
 
   return useCallback((navigate: () => void) => {
     bypassed.current = true;
@@ -86,4 +101,18 @@ export function useLeaveGuard(
       bypassed.current = false;
     }
   }, []);
+}
+
+function sameParamsWithout(params: {
+  a: string;
+  b: string;
+  ignored: string[];
+}) {
+  const [a, b] = [params.a, params.b].map((search) => {
+    const next = new URLSearchParams(search);
+    for (const name of params.ignored) next.delete(name);
+    next.sort();
+    return next.toString();
+  });
+  return a === b;
 }
