@@ -85,7 +85,14 @@ export default function TextHistory({
     // load doesn't bubble, so the pane listens in the capture phase for its
     // images. WebKit has no scroll anchoring to absorb one loading above.
     element.addEventListener("load", keepPlace, true);
-    return () => element.removeEventListener("load", keepPlace, true);
+    // A pane mounted hidden has no height to scroll; showing it resizes it
+    // from zero.
+    const resized = new ResizeObserver(keepPlace);
+    resized.observe(element);
+    return () => {
+      element.removeEventListener("load", keepPlace, true);
+      resized.disconnect();
+    };
   }, []);
 
   return (

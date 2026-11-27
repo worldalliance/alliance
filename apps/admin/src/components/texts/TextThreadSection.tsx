@@ -11,6 +11,7 @@ import {
 } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import type { TextPage } from "../../lib/useOlderTexts";
+import Section from "../ui/Section";
 import {
   SectionLoadState,
   SectionRefreshError,
@@ -106,23 +107,16 @@ export default function TextThreadSection<T extends Thread>(props: {
   };
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <div
-        className={cn(
-          "flex items-center justify-between mx-1 mb-2 gap-2",
-          HEADER_HEIGHT,
-        )}
-      >
-        <div className="flex items-baseline gap-2 min-w-0">
-          <h2 className="text-sm font-semibold text-zinc-700">Texts</h2>
+    <Section
+      title="Texts"
+      actions={
+        <div className={cn("flex items-center gap-2", HEADER_HEIGHT)}>
           {props.headerLink}
           <SectionRefreshError
             noun="texts"
             isError={thread.isRefetchError}
             className="mb-0"
           />
-        </div>
-        <div className="flex items-center gap-2">
           {handledControl && (
             <Button
               size="small"
@@ -154,7 +148,8 @@ export default function TextThreadSection<T extends Thread>(props: {
             )
           )}
         </div>
-      </div>
+      }
+    >
       {thread.data ? (
         <>
           <TextHistory
@@ -180,7 +175,7 @@ export default function TextThreadSection<T extends Thread>(props: {
           <div className={COMPOSER_AREA} />
         </>
       )}
-    </section>
+    </Section>
   );
 }
 

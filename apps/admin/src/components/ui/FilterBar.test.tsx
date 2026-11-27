@@ -320,3 +320,90 @@ it("offers Clear all for an empty selection", () => {
   renderBar({ selected: [], checked: false });
   expect(screen.getByRole("button", { name: "Clear all" })).toBeTruthy();
 });
+
+it("shows each option's count beside it", async () => {
+  render(
+    <FilterBar
+      search={{ label: "Search things", value: "", onChange: mock() }}
+      filters={[
+        {
+          kind: FilterKind.Options,
+          key: "kind",
+          label: "Kind",
+          options: [
+            { value: "a", label: "Alpha", count: 3 },
+            { value: "b", label: "Beta", count: 0 },
+          ],
+          selected: new Set(["a", "b"]),
+          defaultSelected: new Set(["a", "b"]),
+          onChange: mock(),
+        },
+      ]}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  const kind = await screen.findByRole("group", { name: "Kind" });
+  expect(
+    within(kind).getByRole("checkbox", { name: /^Alpha ?, 3 matching$/ }),
+  ).toBeTruthy();
+  expect(
+    within(kind).getByRole("checkbox", { name: /^Beta ?, 0 matching$/ }),
+  ).toBeTruthy();
+});
+
+const renderAnyOf = (params: {
+  selected: string[];
+  defaultSelected?: string[];
+  onChange?: (selected: Set<string>) => void;
+}) =>
+  render(
+    <FilterBar
+      search={{ label: "Search things", value: "", onChange: mock() }}
+      filters={[
+        {
+          kind: FilterKind.AnyOf,
+          key: "tag",
+          label: "Tag",
+          options: [
+            { value: "a", label: "Alpha", count: 3 },
+            { value: "b", label: "Beta", count: 0 },
+          ],
+          selected: new Set(params.selected),
+          defaultSelected: new Set(params.defaultSelected),
+          onChange: params.onChange ?? mock(),
+        },
+      ]}
+    />,
+  );
+
+it("filters nothing while no any-of option is checked", () => {
+  renderAnyOf({ selected: [] });
+  expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+});
+
+it("resets an any-of filter to its default on Clear all", () => {
+  const onChange = mock();
+  renderAnyOf({ selected: ["a"], defaultSelected: ["b"], onChange });
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  expect(onChange).toHaveBeenCalledWith(new Set(["b"]));
+});
+
+it("throws when a checked any-of value has no option", () => {
+  expect(() => renderAnyOf({ selected: ["a", "x"] })).toThrow(
+    "tag: no option for x",
+  );
+});
+
+it("names the checked any-of options on a chip that unchecks them all", () => {
+  const onChange = mock();
+  renderAnyOf({ selected: ["a", "b"], onChange });
+  expect(screen.getByRole("list", { name: "Active filters" }).textContent).toBe(
+    "Tag: Alpha, Beta",
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove filter: Tag: Alpha, Beta" }),
+  );
+  expect(onChange).toHaveBeenCalledWith(new Set());
+});

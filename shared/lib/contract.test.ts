@@ -1,6 +1,8 @@
 import type { ContractEventDto } from "../client";
 import {
   canSignAgreement,
+  ContractStatus,
+  contractStatus,
   formatCurrentSigningDate,
   signedContractEvent,
   signedContractId,
@@ -63,4 +65,12 @@ it.each([
   ["no event", null, null],
 ])("signedContractId: %s", (_, lastContractEvent, expected) => {
   expect(signedContractId(lastContractEvent)).toBe(expected);
+});
+
+it.each([
+  ["a signature", event("signed"), ContractStatus.Signed],
+  ["a suspension", event("suspended"), ContractStatus.Suspended],
+  ["no event", undefined, ContractStatus.NotSigned],
+])("contractStatus: %s", (_, lastContractEvent, expected) => {
+  expect(contractStatus(lastContractEvent)).toBe(expected);
 });

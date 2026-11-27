@@ -97,7 +97,7 @@ it("shows a spinner, then the loaded ranges with their count", async () => {
 
   expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
   expect(await screen.findByText(/Family trip/)).toBeTruthy();
-  expect(screen.getByRole("heading").textContent).toBe("Away Periods (1)");
+  expect(screen.getByRole("heading", { name: "Away periods 1" })).toBeTruthy();
 });
 
 it("says there are no away periods once an empty list loads", async () => {
@@ -106,7 +106,7 @@ it("says there are no away periods once an empty list loads", async () => {
   renderSection();
 
   expect(await screen.findByText("No away periods.")).toBeTruthy();
-  expect(screen.getByRole("heading").textContent).toBe("Away Periods (0)");
+  expect(screen.getByRole("heading", { name: "Away periods 0" })).toBeTruthy();
 });
 
 it("reports a failed load instead of an empty list", async () => {
@@ -118,7 +118,7 @@ it("reports a failed load instead of an empty list", async () => {
     "alert",
   );
   expect(screen.queryByText("No away periods.")).toBe(null);
-  expect(screen.getByRole("heading").textContent).toBe("Away Periods");
+  expect(screen.getByRole("heading", { name: "Away periods" })).toBeTruthy();
 });
 
 it("keeps the loaded ranges when a refetch fails", async () => {
@@ -176,7 +176,11 @@ it("shows a refused schedule and keeps the form", async () => {
   renderSection();
   await fillCreateForm();
 
-  expect(await screen.findByText("Away periods can't overlap.")).toBeTruthy();
+  expect(
+    (await screen.findByText("Away periods can't overlap.")).getAttribute(
+      "role",
+    ),
+  ).toBe("alert");
   expect(screen.getByLabelText<HTMLInputElement>("Start").value).toBe(
     "2026-04-01",
   );

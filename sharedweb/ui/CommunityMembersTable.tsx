@@ -9,7 +9,10 @@ import {
   getDeadlineTimestampByUserId,
   sortMembersByNextTaskDue,
 } from "@alliance/shared/lib/communityMemberActions";
+import { contractStatus, ContractStatus } from "@alliance/shared/lib/contract";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
+import { cn } from "@alliance/shared/styles/util";
+import { mapValues } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CommunityMemberTableRow from "./CommunityMemberTableRow";
 import DropdownSelect from "./DropdownSelect";
@@ -28,6 +31,24 @@ export enum ContractFilterMode {
   NOT_SIGNED = "Not signed",
 }
 
+const CONTRACT_FILTER_STATUS: Record<
+  ContractFilterMode,
+  ContractStatus | null
+> = {
+  [ContractFilterMode.ALL]: null,
+  [ContractFilterMode.SIGNED]: ContractStatus.Signed,
+  [ContractFilterMode.SUSPENDED]: ContractStatus.Suspended,
+  [ContractFilterMode.NOT_SIGNED]: ContractStatus.NotSigned,
+};
+
+export const matchesContractFilter = (
+  mode: ContractFilterMode,
+  user: Pick<ProfileDto, "lastContractEvent">,
+) => {
+  const status = CONTRACT_FILTER_STATUS[mode];
+  return status === null || contractStatus(user.lastContractEvent) === status;
+};
+
 type CommunityMembersTableProps = {
   leaders: ProfileDto[];
   members: ProfileDto[];
@@ -40,12 +61,20 @@ type CommunityMembersTableProps = {
   completedAllCurrentActions?: Record<number, boolean>;
   maxActionsPerWeek: Record<number, number> | null;
   showInfoTooltip?: boolean;
-  showContractFilter?: boolean;
   disableSort?: boolean;
   /** Members per page. Omit to render every row at once. */
   pageSize?: number;
   memberHref: (memberId: number) => string;
-};
+} & (
+  | { showMembersHeading?: true; showContractFilter?: boolean }
+  | {
+      /** Hides the "Members" heading and filters; the caller filters `members`. */
+      showMembersHeading: false;
+      showContractFilter?: never;
+      // Without the heading, leads would run into the members.
+      leaders: [];
+    }
+);
 
 const CommunityMembersTable = ({
   leaders,
@@ -60,6 +89,7 @@ const CommunityMembersTable = ({
   maxActionsPerWeek,
   showInfoTooltip = false,
   showContractFilter = false,
+  showMembersHeading = true,
   disableSort = false,
   pageSize,
   memberHref,
@@ -87,38 +117,18 @@ const CommunityMembersTable = ({
     [userActionRelations, actions, now],
   );
 
-  const filteredByContract = useMemo(() => {
-    if (contractFilter === ContractFilterMode.ALL) {
-      return members;
-    }
-    return members.filter((user) => {
-      if (contractFilter === ContractFilterMode.NOT_SIGNED) {
-        return !user.lastContractEvent;
-      }
-      if (contractFilter === ContractFilterMode.SIGNED) {
-        return user.lastContractEvent?.type === "signed";
-      }
-      if (contractFilter === ContractFilterMode.SUSPENDED) {
-        return user.lastContractEvent?.type === "suspended";
-      }
-      return true;
-    });
-  }, [contractFilter, members]);
+  const filteredByContract = useMemo(
+    () => members.filter((user) => matchesContractFilter(contractFilter, user)),
+    [contractFilter, members],
+  );
 
-  const membersByContract = useMemo(() => {
-    return {
-      [ContractFilterMode.ALL]: members,
-      [ContractFilterMode.SIGNED]: members.filter(
-        (user) => user.lastContractEvent?.type === "signed",
+  const membersByContract = useMemo(
+    () =>
+      mapValues(CONTRACT_FILTER_STATUS, (_, mode) =>
+        members.filter((user) => matchesContractFilter(mode, user)),
       ),
-      [ContractFilterMode.SUSPENDED]: members.filter(
-        (user) => user.lastContractEvent?.type === "suspended",
-      ),
-      [ContractFilterMode.NOT_SIGNED]: members.filter(
-        (user) => !user.lastContractEvent,
-      ),
-    };
-  }, [members]);
+    [members],
+  );
 
   const membersByCompletion = useMemo(() => {
     return {
@@ -190,8 +200,8 @@ const CommunityMembersTable = ({
   };
 
   return (
-    <div className="flex flex-col py-4 mt-4">
-      <div className="">
+    <div className={cn("flex flex-col", showMembersHeading && "py-4 mt-4")}>
+      <div>
         <table className="w-full border-collapse table-auto overflow-x-clip">
           <colgroup>
             <col className="w-[140px] md:w-[200px]" />
@@ -261,50 +271,55 @@ const CommunityMembersTable = ({
               </tbody>
             </>
           )}
-          <thead className="text-left">
-            <tr>
-              <td colSpan={amLeader ? 4 : 2} className="px-5 md:px-0 pb-6 pt-6">
-                <div className="flex flex-col gap-y-2">
-                  <p className="text-xl md:text-2xl font-semibold">Members</p>
-                  <div className="flex flex-row gap-3 items-center">
-                    {showContractFilter && (
+          {showMembersHeading && (
+            <thead className="text-left">
+              <tr>
+                <td
+                  colSpan={amLeader ? 4 : 2}
+                  className="px-5 md:px-0 pb-6 pt-6"
+                >
+                  <div className="flex flex-col gap-y-2">
+                    <p className="text-xl md:text-2xl font-semibold">Members</p>
+                    <div className="flex flex-row gap-3 items-center">
+                      {showContractFilter && (
+                        <DropdownSelect
+                          options={ContractFilterMode}
+                          secondaryLabel={([, mode]) =>
+                            membersByContract[mode].length.toString()
+                          }
+                          value={contractFilter}
+                          onChange={([, mode]) => {
+                            setContractFilter(mode);
+                            setPage(1);
+                          }}
+                        />
+                      )}
                       <DropdownSelect
-                        options={ContractFilterMode}
+                        options={CompletionFilterMode}
                         secondaryLabel={([, mode]) =>
-                          membersByContract[mode].length.toString()
+                          membersByCompletion[mode].length.toString()
                         }
-                        value={contractFilter}
+                        value={completionFilter}
                         onChange={([, mode]) => {
-                          setContractFilter(mode);
+                          setCompletionFilter(mode);
                           setPage(1);
                         }}
                       />
-                    )}
-                    <DropdownSelect
-                      options={CompletionFilterMode}
-                      secondaryLabel={([, mode]) =>
-                        membersByCompletion[mode].length.toString()
-                      }
-                      value={completionFilter}
-                      onChange={([, mode]) => {
-                        setCompletionFilter(mode);
-                        setPage(1);
-                      }}
-                    />
-                    {hasActiveFilters && (
-                      <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="text-sm text-zinc-500 hover:text-zinc-700 hover:underline"
-                      >
-                        Reset filters
-                      </button>
-                    )}
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={resetFilters}
+                          className="text-sm text-zinc-500 hover:text-zinc-700 hover:underline"
+                        >
+                          Reset filters
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </td>
-            </tr>
-          </thead>
+                </td>
+              </tr>
+            </thead>
+          )}
           <thead className="text-left bg-zinc-50">
             <tr className="*:py-4 *:px-2 *:md:px-4 border-y md:border border-zinc-200 text-xs md:text-sm text-zinc-600">
               <th scope="col" className="font-medium">

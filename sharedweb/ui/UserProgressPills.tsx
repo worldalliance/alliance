@@ -81,6 +81,25 @@ export const PILL_STATUS_DATA = Object.freeze({
   }) satisfies PillStatusData,
 }) satisfies Record<UserActionRelationPillStatus, PillStatusData>;
 
+const LEGEND_ENTRIES = Object.values(PILL_STATUS_DATA).flatMap((data) =>
+  data.pillStyle ? [data] : [],
+);
+
+export const ActionHistoryLegend = () => (
+  <ul
+    role="list"
+    aria-label="Action history key"
+    className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600"
+  >
+    {LEGEND_ENTRIES.map(({ pillSubtitleText, pillStyle }) => (
+      <li key={pillSubtitleText} className="flex items-center gap-1">
+        <span aria-hidden className={cn("h-3 w-4 rounded", pillStyle)} />
+        {pillSubtitleText}
+      </li>
+    ))}
+  </ul>
+);
+
 export function useMaxActionsPerWeek(params: {
   actionSummaries: UserActionSummaryDto[] | null;
   userActionRelations: Record<number, UserActionRelationDetailDto[]> | null;
@@ -129,24 +148,29 @@ function EmptyPill() {
 }
 function Pill({
   action,
-  additionalSubtitleText,
+  reason,
   pillStatusData,
   pillHeight,
 }: {
   action: UserActionSummaryDto;
-  additionalSubtitleText?: ReactNode;
+  reason?: string;
   pillStatusData: PillStatusData & { pillStyle: string };
   pillHeight: string;
 }) {
-  const { pillLabel, pillStyle, pillSubtitleText, pillTextStyle } =
-    pillStatusData;
+  const { pillStyle, pillSubtitleText, pillTextStyle } = pillStatusData;
+  const status = reason ? `${pillSubtitleText}: ${reason}` : pillSubtitleText;
+  const deadline =
+    action.memberActionDeadline === null
+      ? "No deadline"
+      : `Due ${formatDateTime(new Date(action.memberActionDeadline))}`;
   return (
     <Tooltip key={action.id}>
       <TooltipTrigger
         render={
           <div
+            role="img"
             className={cn("relative flex-1", MIN_MAX_WIDTH)}
-            aria-label={`${action.name} - ${pillLabel}`}
+            aria-label={`${action.name} - ${status}. ${deadline}`}
           >
             <div
               className={cn(
@@ -162,15 +186,8 @@ function Pill({
       <TooltipContent side="top" sideOffset={4}>
         <div className="flex flex-col items-center justify-center text-center">
           <p>{action.name}</p>
-          <p className="text-zinc-500">
-            {action.memberActionDeadline === null
-              ? "No deadline"
-              : `Due ${formatDateTime(new Date(action.memberActionDeadline))}`}
-          </p>
-          <p className={pillTextStyle}>
-            {pillSubtitleText}
-            {additionalSubtitleText}
-          </p>
+          <p className="text-zinc-500">{deadline}</p>
+          <p className={pillTextStyle}>{status}</p>
         </div>
       </TooltipContent>
     </Tooltip>
@@ -225,10 +242,10 @@ const UserProgressPills = ({
         return (
           <Pill
             action={action}
-            additionalSubtitleText={
+            reason={
               relation.status === "wont_complete"
-                ? `: ${WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(relation)]}`
-                : null
+                ? WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(relation)]
+                : undefined
             }
             pillStatusData={pillStatusData}
             pillHeight={pillHeight}

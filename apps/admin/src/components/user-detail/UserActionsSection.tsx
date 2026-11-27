@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { useUserActionRelationsAdmin } from "../../lib/useUserActionRelationsAdmin";
 import CreateActivityControls from "../CreateActivityControls";
+import Section from "../ui/Section";
 import { WithdrawalInfo } from "../WithdrawalInfo";
 import { humanize } from "./humanize";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
@@ -21,27 +22,33 @@ export default function UserActionsSection({ userId }: { userId: number }) {
   );
 
   if (!data) {
-    return <SectionLoadState noun="actions" isError={isError} />;
+    return (
+      <Section title="Actions">
+        <SectionLoadState noun="actions" isError={isError} />
+      </Section>
+    );
   }
   const { actionSummaries } = data;
 
   return (
-    <section className="max-h-128 overflow-y-auto">
+    <Section title="Actions" meta={actionSummaries.length}>
       <SectionRefreshError noun="actions" isError={isRefetchError} />
       {actionSummaries.length ? (
-        <div className="border border-zinc-200 rounded overflow-hidden">
+        <div className="max-h-128 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-100 text-left">
               <tr>
                 <th className="px-3 py-2 font-medium text-zinc-600">Action</th>
                 <th className="px-3 py-2 font-medium text-zinc-600">Status</th>
                 <th className="px-3 py-2 font-medium text-zinc-600 text-nowrap">
-                  User Status
+                  Member status
                 </th>
                 <th className="px-3 py-2 font-medium text-zinc-600 text-nowrap">
-                  Last Activity
+                  Last activity
                 </th>
-                <th className="px-3 py-2 font-medium text-zinc-600">Actions</th>
+                <th className="px-3 py-2 font-medium text-zinc-600">
+                  Record activity
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -106,6 +113,6 @@ export default function UserActionsSection({ userId }: { userId: number }) {
       ) : (
         <p className="text-sm text-zinc-500">No actions tracked.</p>
       )}
-    </section>
+    </Section>
   );
 }

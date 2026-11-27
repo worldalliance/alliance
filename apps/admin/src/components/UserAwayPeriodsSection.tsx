@@ -29,6 +29,7 @@ import { Pencil, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
+import Section from "./ui/Section";
 
 export default function UserAwayPeriodsSection({
   user,
@@ -216,16 +217,17 @@ export default function UserAwayPeriodsSection({
   );
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-        Away Periods
-        {awayRangesQuery.data && ` (${sortedAwayRanges.length})`}
-      </h2>
+    <Section
+      title="Away periods"
+      meta={awayRangesQuery.data ? sortedAwayRanges.length : undefined}
+    >
       {awayMutationError && (
-        <p className="text-xs text-red-500 mb-2">{awayMutationError}</p>
+        <p role="alert" className="text-xs text-red-600 mb-2">
+          {awayMutationError}
+        </p>
       )}
       {awayRangesQuery.isError && (
-        <p role="alert" className="text-xs text-red-500 mb-2">
+        <p role="alert" className="text-xs text-red-600 mb-2">
           {adminRefusalMessage(
             awayRangesQuery.error,
             "Could not load away periods.",
@@ -413,7 +415,7 @@ export default function UserAwayPeriodsSection({
           {isAwayMutationPending ? "Saving..." : "Schedule"}
         </Button>
       </div>
-    </section>
+    </Section>
   );
 }
 

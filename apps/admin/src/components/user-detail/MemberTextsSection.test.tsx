@@ -449,7 +449,7 @@ it("shows images inline, other files as downloads, and uncopied ones as loading 
   expect(screen.getByText("Attachment unavailable")).toBeTruthy();
 });
 
-it("says a poll failed beside the heading, keeping the thread", async () => {
+it("says a poll failed in the texts header, keeping the thread", async () => {
   const client = renderSection();
   await screen.findByText("What do I do?");
 
@@ -460,7 +460,7 @@ it("says a poll failed beside the heading, keeping the thread", async () => {
 
   const error = await screen.findByText(/Could not refresh texts/);
   const heading = screen.getByRole("heading", { name: "Texts" });
-  expect(heading.parentElement?.contains(error)).toBe(true);
+  expect(heading.closest("header")?.contains(error)).toBe(true);
   expect(screen.getByText("What do I do?")).toBeTruthy();
 });
 

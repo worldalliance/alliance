@@ -56,15 +56,36 @@ export function getSignedMessage(date: string): string {
   return `You entered into this agreement on ${formattedDate}.`;
 }
 
-const IS_SIGNING: Record<ContractEventType, boolean> = {
-  signed: true,
-  suspended: false,
+export enum ContractStatus {
+  Signed = "signed",
+  Suspended = "suspended",
+  NotSigned = "not-signed",
+}
+
+export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
+  [ContractStatus.Signed]: "Signed",
+  [ContractStatus.Suspended]: "Suspended",
+  [ContractStatus.NotSigned]: "Not signed",
 };
+
+const EVENT_STATUS: Record<ContractEventType, ContractStatus> = {
+  signed: ContractStatus.Signed,
+  suspended: ContractStatus.Suspended,
+};
+
+export function contractStatus(
+  lastContractEvent: Pick<ContractEventDto, "type"> | null | undefined,
+): ContractStatus {
+  return lastContractEvent
+    ? EVENT_STATUS[lastContractEvent.type]
+    : ContractStatus.NotSigned;
+}
 
 export function formatCurrentSigningDate(
   lastContractEvent: ContractEventDto | undefined,
 ): string | null {
-  return lastContractEvent && IS_SIGNING[lastContractEvent.type]
+  return lastContractEvent &&
+    contractStatus(lastContractEvent) === ContractStatus.Signed
     ? formatShortDate(new Date(lastContractEvent.date))
     : null;
 }
@@ -96,7 +117,9 @@ export function canSignAgreement(params: {
 }
 
 export function signedContractId(event: ContractEventState): number | null {
-  return event && IS_SIGNING[event.type] ? event.contractId : null;
+  return event && contractStatus(event) === ContractStatus.Signed
+    ? event.contractId
+    : null;
 }
 
 export function signedContractEvent(params: {

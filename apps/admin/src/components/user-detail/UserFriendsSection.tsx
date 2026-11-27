@@ -3,6 +3,7 @@ import { useUserFriendsQuery } from "@alliance/shared/lib/user";
 import { loaderPrefetchStaleTime } from "@alliance/sharedweb/lib/queryClient";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Link } from "react-router";
+import Section from "../ui/Section";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 export default function UserFriendsSection({ userId }: { userId: number }) {
@@ -13,14 +14,15 @@ export default function UserFriendsSection({ userId }: { userId: number }) {
   } = useUserFriendsQuery(userId, { staleTime: loaderPrefetchStaleTime });
 
   if (!friends) {
-    return <SectionLoadState noun="friends" isError={isError} />;
+    return (
+      <Section title="Friends">
+        <SectionLoadState noun="friends" isError={isError} />
+      </Section>
+    );
   }
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-        Friends ({friends.length})
-      </h2>
+    <Section title="Friends" meta={friends.length}>
       <SectionRefreshError noun="friends" isError={isRefetchError} />
       {friends.length ? (
         <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -31,7 +33,7 @@ export default function UserFriendsSection({ userId }: { userId: number }) {
       ) : (
         <p className="text-xs text-zinc-500">No friends yet.</p>
       )}
-    </section>
+    </Section>
   );
 }
 

@@ -1,0 +1,56 @@
+# Decisions
+
+All entries are agent decisions (agent judgement) unless marked otherwise. The brief for this PR came from the agent running the plan in `01a1ed2e-47fb-7000-9671-a7ba248ef2fb-admin-redesign-shell` (requirement 8 there: later phase 1 PRs are carried out by subagents). Its points are agent proposals, not owner requirements; the ones below marked "from the brief" are carried out as given. The owner's answers are requirements 4 and 5; the choices they left to the agent are listed at the end.
+
+## Members list
+
+- `PageShell` titled "Members", full width for the table. `meta` shows the member count, or "shown of total" while filters narrow the list (from the brief).
+- Search, role, tag, contract and action progress sit in one `FilterBar`, each kept in the URL: `q`, `role`, `tag`, `contract`, `progress` (from the brief). Updates replace the history entry, as on the Actions page.
+- The old defaults stay: only signed members show, and nothing else is filtered. "Contract: Signed" now shows as a chip, so it is visible that the list is filtered; removing it shows every contract status (from the brief).
+- Behaviour change: the contract and progress filters now apply to the grid as well as the list. Before, they lived inside the table, so the grid showed unsigned members the list hid. PR 3 made the same call for the Actions page: a filter that silently doesn't apply to the view on screen misleads.
+- The single-choice "Any status / Caught up / Not caught up" and "All / Signed / Suspended / Not signed" dropdowns became checkbox sets, like the Actions status filter. Every old choice is still reachable; combinations such as "Suspended or not signed" are new.
+- Option counts stay beside each option, as the old dropdowns showed them. Contract counts are taken after search, role and tag; progress counts after the contract filter too, as before.
+- Role and tag keep their "match any checked, none checked filters nothing" meaning. `FilterBar` gains a third kind, `AnyOf`, for it, and an optional per-option `count`. The existing `Options` kind means "all checked filters nothing", which for tags would mean unchecking every other tag to pick one.
+- With no tags, the tag filter is left out rather than showing an empty group. A `tag` in the URL is never dropped silently: the list and its count wait for tags to load, with the linked tag reading "Loading…"; a failed tag load shows an alert, the tag reads "Unavailable", and the list is not filtered by tag, as the alert says; only once tags load does a tag that no longer exists show as an "Unknown tag" chip matching nobody. Each such tag's label carries its id, so several can be told apart, and changing the tag filter writes them back to the URL with the rest of the selection.
+- A `progress` in the URL waits for action progress the same way, since every member counts as not caught up until it loads. If action progress fails to load, an alert says members can't be filtered by it, and the progress filter is not applied, rather than showing an empty list. A linked one still shows as a chip without counts, as a failed tag does, so Clear all removes it.
+- The old "Reset filters" button becomes the filter bar's Clear all (requirement 5). "No members match these filters." has no button of its own, as on the Actions page.
+- The search box no longer takes focus on load.
+- "Manage tags" is a secondary header action, not a `menu` item. `PageMenu` items are buttons, and `ux-guidelines` asks that anything that goes somewhere is a real link, so it opens in a new tab and can be copied. The brief allowed either.
+- The unlabelled list and grid icons became a "View" `SegmentedControl` with List and Grid, kept as `?view=grid` (List leaves it out), matching the Actions page's `view` param. The old `?viewMode=cards` links now open the list: the param is not read, since it only chose a view on an admin-only page and losing it costs one click. The shuffle icon became a "Shuffle order" button; it applies to both views (from the brief).
+- The table keeps its dense rows. Its own "Members" heading and filters are hidden through a new `showMembersHeading={false}` prop on the shared `CommunityMembersTable`; the group page and the frontend keep theirs. The prop's type rules out pairing it with `showContractFilter`, which would filter invisibly.
+- The action history bars get a key above the list, built from `PILL_STATUS_DATA`, so each colour has a word and a new status joins it. The key uses the words the bar's tooltip shows ("Not yet completed", "Member away"), so one colour has one name on screen. Each bar is also exposed as an image named "action - status" in those words, so screen readers read it (`ux-guidelines`, use of colour and non-text content). Only ungrouped bars name a member's withdrawal reason, as before the redesign: week-grouped bars are also what members see of each other on the community page, and a member's reason is private to them and staff.
+- Loading, failed and empty lists now read differently ("Loading members…", "Couldn't load members…", "No members yet.", "No members match these filters."). Before, the list showed empty while loading or after a failure.
+- `MemberFilterDropdown` is deleted; nothing else used it.
+- `UsersList.test.tsx` passed 500 lines once its progress tests served a member who is caught up, so it splits like `WaitlistPage`'s tests: `UsersList.testHarness.tsx` (served API, fixtures, render and filter helpers), `UsersList.filters.test.tsx` (search and filters) and `UsersList.test.tsx` (loading, sorting, cards, table). The root `AGENTS.md` asks for a read-only codex consult on splits first; the `codex` CLI isn't installed on this machine, so the split is this agent's choice alone.
+
+## Member page
+
+- `PageShell` with the back link to Members, the member's name as the title, and pills in `meta` (from the brief): contract status, Away when they are away, then their roles, each a `StatusPill` in the tones the action pages use (contract status positive, negative or neutral, Away attention, roles neutral), so a status looks the same on every page. Email, phone and ID are the description.
+- The sections are grouped under four views kept as `?view=` (from the brief): Profile (member info, roles, tags, notification settings, plus contract and away periods, which describe the member), Activity (actions, notifications, form submissions), Messages (texts) and Connections (groups, friends). Profile is the default (requirement 4): a URL without `view` opens it, and its tab writes `?view=profile`.
+- The views are the shared URL `Tabs`, links styled as underlined tabs, so each opens in a new tab and Back returns to the last one. The current one has `aria-current="page"` and a bar under it, not colour alone.
+- Every view stays mounted and only the current one shows, so a draft reply, an unsaved away period or a group move survives switching views, as it did when every section sat on one page. The sections load together, as they did then. The text thread scrolls to its latest text when its view first shows, since it mounted hidden with no height to scroll.
+- Needs reply links to each number's text thread page, as main made it do while this was in review, so it no longer opens a member's Messages view. The Texts section that view shows is shared with that thread page, and a pane mounted hidden in a view not yet opened keeps its scroll place once shown, through a resize observer in the shared `TextHistory`.
+- "Suspend contract" and "Delete account" are destructive `menu` items behind their existing confirmations (from the brief). Suspend is disabled with "This member has no active contract." where it used to be a disabled button with a tooltip. "Log in as user" stays a visible header action, renamed "Log in as member" and made a real link, since it opens a new tab.
+- Every block is a `Section` (from the brief). Sections that used to show only a loading line now keep their heading while loading. Headings follow sentence case: "Member Info" is "Member info", "Away Periods" is "Away periods", and "Invited Submissions" is "Form submissions", the name the brief and the page's own empty state use. Counts moved from "(n)" to the section's `meta`. The contract block moved to its own `UserContractSection`, and the avatar moved into Member info.
+- In the actions table, "User Status" is "Member status", "Last Activity" is "Last activity", and the column of activity pickers is "Record activity" rather than a second "Actions".
+- Loading shows the page shell titled "Member" with "Loading member…"; not found and failed loads show the shell with the message as an alert. A route-level `HydrateFallback` would cover the first load too, but React Router allows `HydrateFallback` only on the root route in SPA mode, and the page crashes with "No result returned from dataStrategy" when one is exported; so the first load of the app still shows the root spinner.
+- Role and tag errors became alerts and `red-600`, which meets text contrast where `red-500` didn't.
+
+## Search params
+
+Found while verifying in the browser (dev build, 761 members): typing quickly into a `FilterBar` search dropped characters, and a second URL update before the first rendered undid the first. Both are fixed in PR 3's own commits and recorded in `01a1ed4a-beb8-7000-a427-43be3a7c0c5c-admin-redesign-core-pages`.
+
+`readBuckets`/`writeBuckets` delegate to a generic `readSetParam`/`writeSetParam` (`lib/setSearchParam.ts`), now that the members page has four set-valued params.
+
+## Contract status
+
+`contractStatus` and `CONTRACT_STATUS_LABEL` in `shared/lib/contract.ts` replace three copies of the "Signed / Suspended / Not signed" mapping (the members table, the member card and the member page). The text colours live in `lib/contractStatusStyle.ts` for the card and the contract section.
+
+## File sizes
+
+`UserDetailView.test.tsx` passed its 550-line waiver with the new tests, so it was split by view, following the `WaitlistPage` pattern: `UserDetailView.testHarness.tsx` (served API, fixtures, render helper), `UserDetailView.test.tsx` (shell, views, menu, profile sections) and `UserDetailView.activity.test.tsx` (activity and connections sections). The root `AGENTS.md` asks for a read-only codex consult on splits first; the `codex` CLI isn't installed on this machine, so the split is this agent's choice alone.
+
+## Choices the owner left to the agent
+
+- The owner left how the contract filter works to the agent. It stays a combinable checkbox set (the Members list entry above), which allows combinations such as "Suspended or not signed"; the old single choice is the alternative. The filter itself is required (requirement 5 names it), so only its form is the agent's to change.
+- The action-history bars still tell statuses apart by colour alone at a glance. A key and screen-reader names were added, but WCAG 2.2 success criterion 1.4.1 wants a second visual cue such as a pattern or shape (`EVIDENCE.md`, Use of colour on the action-history bars). The owner left whether and when to add one to the agent. The bars come from `sharedweb/ui/UserProgressPills.tsx`, which the member-facing community page also uses, so a second cue changes what members see too and is out of scope for this admin PR. It is deferred to ALL-2365.

@@ -2,8 +2,10 @@ import {
   UserAdminDetailDto,
   UserAdminInvitedByDto,
 } from "@alliance/shared/client/types.gen";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Globe, MapPin, UserPlus } from "lucide-react";
 import { Link } from "react-router";
+import Section from "../ui/Section";
 import { humanize } from "./humanize";
 
 export default function UserMemberInfoSection({
@@ -12,18 +14,20 @@ export default function UserMemberInfoSection({
   user: UserAdminDetailDto;
 }) {
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">Member Info</h2>
+    <Section title="Member info">
       <div className="space-y-3 text-sm">
-        <div>
-          <p className="text-xs font-medium text-zinc-500 mb-1">Bio</p>
-          {user.profileDescription?.trim() ? (
-            <p className="text-zinc-800 whitespace-pre-wrap break-words">
-              {user.profileDescription}
-            </p>
-          ) : (
-            <p className="text-zinc-500 text-xs">No bio provided.</p>
-          )}
+        <div className="flex items-start gap-3">
+          <AvatarProfile pfp={user.profilePicture} size="large" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-zinc-500 mb-1">Bio</p>
+            {user.profileDescription?.trim() ? (
+              <p className="text-zinc-800 whitespace-pre-wrap break-words">
+                {user.profileDescription}
+              </p>
+            ) : (
+              <p className="text-zinc-500 text-xs">No bio provided.</p>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -62,7 +66,7 @@ export default function UserMemberInfoSection({
           )}
         </dl>
       </div>
-    </section>
+    </Section>
   );
 }
 
