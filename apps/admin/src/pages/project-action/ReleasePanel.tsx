@@ -1,6 +1,7 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { ActionPhase } from "../../lib/actionPhase";
 import { ActionEditorSection } from "../../lib/staffTestingGate";
@@ -8,6 +9,11 @@ import {
   suiteLoadError,
   useActionSuiteAdmin,
 } from "../../lib/useActionSuiteAdmin";
+import {
+  CommunicationsSection,
+  communicationsPath,
+} from "../action-dashboard/workspaceLocation";
+import { UnsavedNotice } from "./PhaseHeader";
 import ScheduledReleaseEditor from "./ScheduledReleaseEditor";
 import ScheduleReleaseForm from "./ScheduleReleaseForm";
 
@@ -41,6 +47,12 @@ const SuiteRelease = ({
       </p>
     );
   }
+  const withNotice = (control: ReactNode) => (
+    <div className="flex flex-col gap-3">
+      {disabled && <UnsavedNotice />}
+      {control}
+    </div>
+  );
   switch (phase) {
     case ActionPhase.Draft:
       return (
@@ -49,20 +61,30 @@ const SuiteRelease = ({
         </p>
       );
     case ActionPhase.StaffTesting:
-      return <ScheduleReleaseForm action={action} disabled={disabled} />;
+      return withNotice(
+        <ScheduleReleaseForm action={action} disabled={disabled} />,
+      );
     case ActionPhase.Scheduled:
     case ActionPhase.Live:
     case ActionPhase.Closed:
-      return (
+      return withNotice(
         <ScheduledReleaseEditor
           key={action.events.map(({ id, date }) => `${id}:${date}`).join()}
           action={action}
           disabled={disabled}
-        />
+        />,
       );
     default:
       throw new Error(`unknown phase: ${phase satisfies never}`);
   }
+};
+
+const UNSCHEDULED: Record<ActionPhase, boolean> = {
+  [ActionPhase.Draft]: true,
+  [ActionPhase.StaffTesting]: true,
+  [ActionPhase.Scheduled]: false,
+  [ActionPhase.Live]: false,
+  [ActionPhase.Closed]: false,
 };
 
 const ReleasePanel = (props: {
@@ -71,6 +93,7 @@ const ReleasePanel = (props: {
   disabled: boolean;
 }) => {
   const suiteId = props.action.suite?.id;
+  if (suiteId === undefined && !UNSCHEDULED[props.phase]) return null;
   return (
     <Card style={CardStyle.White} id={ActionEditorSection.Release}>
       <h2 className="mb-3 text-lg font-semibold">Release</h2>
@@ -78,7 +101,10 @@ const ReleasePanel = (props: {
         <p className="text-sm text-zinc-700">
           This action has no suite. Schedule it from{" "}
           <Link
-            to={`/actions/${props.action.id}?tab=events`}
+            to={communicationsPath(
+              props.action.id,
+              CommunicationsSection.Events,
+            )}
             className="text-blue-600 underline"
           >
             Events

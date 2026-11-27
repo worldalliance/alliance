@@ -1,5 +1,6 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen } from "@testing-library/react";
+import * as revealing from "../lib/revealInScroller";
 import {
   canvas,
   heading,
@@ -87,7 +88,7 @@ describe("the form outline", () => {
   });
 
   it("expands what holds a selection made on the canvas", () => {
-    const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    const reveal = jest.spyOn(revealing, "revealInScroller");
     renderFormBuilder(schema);
     fireEvent.click(entry("Two"));
     fireEvent.click(contents("Shared visibility · 2 elements"));
@@ -98,7 +99,9 @@ describe("the form outline", () => {
 
     selectElement("Pet");
     expect(entry("Text Field: Pet").getAttribute("aria-current")).toBe("true");
-    expect(scroll.mock.contexts).toContain(entry("Text Field: Pet"));
+    expect(reveal.mock.calls.map(([element]) => element)).toContain(
+      entry("Text Field: Pet"),
+    );
   });
 
   it("adds a page, opening it with its title focused", async () => {

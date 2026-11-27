@@ -11,6 +11,8 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
+import { ActionEditorSection } from "../lib/staffTestingGate";
+import { actionSectionPath } from "./action-dashboard/workspaceLocation";
 
 // The endpoint answers with a row per requested id, zeroes included, so a
 // missing entry means unresolved, not none.
@@ -85,7 +87,7 @@ const FormsList: React.FC = () => {
   const handleEditForm = useCallback(
     (formId: number, actionId: number | undefined) => {
       if (actionId) {
-        navigate(`/actions/${actionId}?tab=form`);
+        navigate(actionSectionPath(actionId, ActionEditorSection.TaskForm));
       } else {
         navigate(`/forms/${formId}`);
       }

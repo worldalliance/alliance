@@ -19,6 +19,10 @@ import {
   useFormVariantsAdmin,
 } from "../lib/useFormVariantsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
+import {
+  WorkspaceTab,
+  workspacePath,
+} from "../pages/action-dashboard/workspaceLocation";
 import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
 
 export interface ActionFormVariantsTabProps {
@@ -229,7 +233,11 @@ export default function ActionFormVariantsTab({
         <div className="flex gap-2">
           <BaseButton
             variant={BaseButtonVariant.White}
-            onClick={() => navigate(`/actions/${action.id}?tab=responses`)}
+            onClick={() =>
+              navigate(
+                workspacePath(action.id, { tab: WorkspaceTab.Responses }),
+              )
+            }
           >
             View responses
           </BaseButton>

@@ -32,7 +32,7 @@ const renderActionEditor = (isNew: boolean) => {
     : {
         isNew: false as const,
         cohortParseFailed: false,
-        checklist: null,
+        showStaffPreview: false,
       };
   const Harness = () => {
     const editor = useActionEditor({

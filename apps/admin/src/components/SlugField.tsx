@@ -83,7 +83,7 @@ export function SlugField({
         type="button"
         aria-label="Edit slug"
         title="Edit slug"
-        className="font-mono hover:text-zinc-900 hover:underline"
+        className="text-left font-mono break-all hover:text-zinc-900 hover:underline"
         onClick={() => setDraft(slug)}
       >
         {slug}

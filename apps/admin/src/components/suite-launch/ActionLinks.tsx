@@ -7,6 +7,10 @@ import {
   selectionSearch,
   type LinkedSelection,
 } from "../../lib/linkedSelection";
+import {
+  WorkspaceTab,
+  workspacePath,
+} from "../../pages/action-dashboard/workspaceLocation";
 
 export const iconControlClass =
   "rounded p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-black";
@@ -38,7 +42,7 @@ export const EditActionLink = ({
   <NewTabLink
     to={
       select
-        ? `/actions/${actionId}?tab=details&${selectionSearch(select)}`
+        ? `${workspacePath(actionId, { tab: WorkspaceTab.Content })}&${selectionSearch(select)}`
         : `/actions/${actionId}`
     }
     label={select ? "Edit this text" : "Edit action"}

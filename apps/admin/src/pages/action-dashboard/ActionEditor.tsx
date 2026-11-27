@@ -25,12 +25,7 @@ type ActionLookups = Pick<
 
 type ActionEditorMode =
   | { isNew: true; onCancel: () => void }
-  | {
-      isNew: false;
-      cohortParseFailed: boolean;
-      checklist: React.ReactNode;
-      hideStaffPreview?: boolean;
-    };
+  | { isNew: false; cohortParseFailed: boolean; showStaffPreview: boolean };
 
 type ActionEditorProps = {
   editor: ActionEditorState;
@@ -80,7 +75,7 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
 
   if (mode.isNew) {
     return (
-      <div className="p-5">
+      <div>
         <ActionForm {...formProps} isNew={true} onCancel={mode.onCancel} />
         {editor.contentDialog}
       </div>
@@ -89,7 +84,6 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
 
   return (
     <div className="space-y-4">
-      {mode.checklist}
       {mode.cohortParseFailed && (
         <p className="text-xs text-red-600 mb-2">
           The stored cohort expression could not be parsed and is not shown in
@@ -104,7 +98,7 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
         isNew={false}
         actionId={action?.id}
         baseUrl={getApiUrl()}
-        hideStaffPreview={mode.hideStaffPreview}
+        hideStaffPreview={!mode.showStaffPreview}
       />
       {editor.contentDialog}
     </div>

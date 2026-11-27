@@ -24,8 +24,7 @@ const NewProjectActionDialog = ({
   const [name, setName] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const create = useCreateProjectActionAdmin({
-    onSuccess: (created) =>
-      navigate(`/projects/${projectId}/action/${created.id}`),
+    onSuccess: (created) => navigate(`/actions/${created.id}`),
   });
   const blank = !name.trim() || !shortDescription.trim();
 

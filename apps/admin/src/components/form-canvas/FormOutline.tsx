@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { groupEdges } from "../../lib/formGroups";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
 import type { ElementDrop, ElementSpan } from "../../lib/moveElements";
+import { revealInScroller } from "../../lib/revealInScroller";
 import { DropPosition, type ListMove } from "../../lib/useDragReorder";
 import {
   pageSegments,
@@ -156,8 +157,8 @@ export function FormOutline({
     }
   }
   useEffect(() => {
-    if (ref.current)
-      selectedRow(ref.current)?.scrollIntoView({ block: "nearest" });
+    const row = ref.current && selectedRow(ref.current);
+    if (row) revealInScroller(row);
   }, [selectionKey]);
   const restoreFocus = useRestoreFocusWithin(ref, selectedRow);
   // A row moved to another page while focused leaves focus on the page.
