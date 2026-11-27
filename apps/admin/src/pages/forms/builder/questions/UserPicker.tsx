@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useUsersAdmin } from "../../../../lib/useUsersAdmin";
 import UserSelect, { type UserSelectUser } from "../../../../ui/UserSelect";
 
@@ -9,8 +8,8 @@ export type PickedUser = {
 };
 
 /**
- * One user from the admin's user list, picked by name, or by id for a user
- * without a name, by keyboard or pointer.
+ * One user from the admin's user list, picked by name or id, by keyboard or
+ * pointer.
  */
 export function UserPicker({
   label,
@@ -22,14 +21,7 @@ export function UserPicker({
   onChange: (user: PickedUser | null) => void;
 }) {
   const usersQuery = useUsersAdmin();
-  const users = useMemo(
-    () =>
-      (usersQuery.data ?? []).map((user) => ({
-        ...user,
-        name: user.name ?? `User #${user.id}`,
-      })),
-    [usersQuery.data],
-  );
+  const users = usersQuery.data ?? [];
   // A pick the list no longer holds still shows by the name stored with it.
   const shown: UserSelectUser[] =
     selected && !users.some((user) => user.id === selected.userId)
@@ -52,7 +44,7 @@ export function UserPicker({
           user
             ? {
                 userId: user.id,
-                userName: user.name,
+                userName: user.name ?? `User #${user.id}`,
                 userProfilePicture: user.storedProfilePicture,
               }
             : null,
