@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { VariableTextField } from "./VariableTextField";
 import { useDragReorder } from "../../../../lib/useDragReorder";
 import { Checkbox } from "../../../../ui/Checkbox";
 import { cn } from "../../../../ui/cn";
 import { Input } from "../../../../ui/Input";
+import { Radio } from "../../../../ui/Radio";
 import { controlClass } from "../../../../ui/styles";
 import { ItemList, ItemRow } from "../kit/ItemList";
 import { DefaultKind, swapOptions, writeSection } from "./optionRules";
+import { VariableTextField } from "./VariableTextField";
 
 type Option = { label: string; value: string };
 
@@ -132,13 +133,7 @@ export function DefaultChoice({
 }) {
   const control: Record<DefaultKind, ReactNode> = {
     [DefaultKind.One]: (
-      <input
-        type="radio"
-        name={group}
-        checked={checked}
-        onChange={() => onChange(true)}
-        className="size-4 shrink-0 cursor-pointer accent-accent focus-ring"
-      />
+      <Radio name={group} checked={checked} onChange={() => onChange(true)} />
     ),
     [DefaultKind.Many]: (
       <Checkbox

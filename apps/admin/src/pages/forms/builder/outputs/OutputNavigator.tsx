@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "../../../../ui/DropdownMenu";
 import { MoreMenu, type MoreMenuItem } from "../../../../ui/MoreMenu";
+import { navRowClass } from "../../../../ui/styles";
 import {
   DISPLAY_BLOCK_KINDS,
   OUTPUT_BY_KIND,
@@ -29,9 +30,7 @@ import {
   type OutputSelection,
 } from "./outputSelection";
 
-const ROW =
-  "flex min-h-control items-center rounded-md px-2 text-left focus-ring hover:bg-surface-2";
-const SELECTED = "bg-accent-soft hover:bg-accent-soft";
+const ROW = cn(navRowClass, "flex min-h-control items-center px-2 text-left");
 
 /** Move up, Move down and Remove for the block at `index`, in a row's menu and the inspector's. */
 export function blockMenuItems({
@@ -94,11 +93,7 @@ export function OutputNavigator({
             viewId: selection.viewId,
           })
         }
-        className={cn(
-          ROW,
-          "font-medium",
-          selection.target === OutputTarget.All && SELECTED,
-        )}
+        className={cn(ROW, "font-medium")}
       >
         All output views
       </button>
@@ -150,7 +145,7 @@ function ViewTree({
         onClick={() =>
           actions.select({ target: OutputTarget.View, viewId: view.id })
         }
-        className={cn(ROW, "font-medium", viewSelected && SELECTED)}
+        className={cn(ROW, "font-medium")}
       >
         <span className="truncate">{view.title || "Untitled view"}</span>
       </button>
@@ -216,7 +211,7 @@ function ViewTree({
                   })
                 }
                 title={label}
-                className={cn(ROW, "min-w-0 flex-1 py-1", selected && SELECTED)}
+                className={cn(ROW, "min-w-0 flex-1 py-1")}
               >
                 <span className="min-w-0">
                   <span className="block truncate">{label}</span>

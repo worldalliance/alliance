@@ -6,14 +6,17 @@ import {
   type BigLinkIcon,
 } from "@alliance/common/forms/display-blocks";
 import { useState } from "react";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Input } from "../../../../ui/Input";
 import { Select } from "../../../../ui/Select";
-import { CheckboxField, Field } from "../../../../ui/templates/Form";
+import {
+  CheckboxField,
+  Field,
+  RadioGroupField,
+} from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { ExternalShareTargetSelect } from "../questions/ExternalShareTargetSelect";
 import { choiceOf } from "./blockChoices";
 import { BlockPreview } from "./BlockPreview";
-import { BlockRadios } from "./BlockRadios";
 import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
@@ -122,7 +125,7 @@ export function EditableBigLinkBlock(
                 </Select>
               )}
             </Field>
-            <BlockRadios
+            <RadioGroupField
               label="On click"
               choices={ACTIONS}
               value={block.action ?? BigLinkAction.Open}
@@ -148,7 +151,7 @@ function LinkSourceFields({
 
   return (
     <>
-      <BlockRadios
+      <RadioGroupField
         label="Link to"
         choices={LINK_TO}
         value={linksToTarget ? LinkTo.Target : LinkTo.Url}

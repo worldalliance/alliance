@@ -1,11 +1,15 @@
 import type { CheckboxField } from "@alliance/common/forms/form-schema";
+import { RadioGroupField } from "../../../../ui/templates/Form";
 import { InspectorGroup } from "../kit/InspectorGroup";
-import { Select } from "../../../../ui/Select";
-import { Field } from "../../../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
+
+const POSITIONS = [
+  { value: "left", label: "Left of the text" },
+  { value: "right", label: "Right of the text" },
+] as const;
 
 export function EditableCheckboxField({
   field,
@@ -27,23 +31,16 @@ export function EditableCheckboxField({
           onChange={(label) => onUpdate({ label })}
           placeholder="Enter checkbox label"
         />
-        <Field label="Checkbox position">
-          {(control) => (
-            <Select
-              {...control}
-              value={field.checkboxPosition ?? "left"}
-              onChange={(event) =>
-                onUpdate({
-                  checkboxPosition:
-                    event.target.value === "right" ? "right" : undefined,
-                })
-              }
-            >
-              <option value="left">Left of the text</option>
-              <option value="right">Right of the text</option>
-            </Select>
-          )}
-        </Field>
+        <RadioGroupField
+          label="Checkbox position"
+          choices={POSITIONS}
+          value={field.checkboxPosition ?? "left"}
+          onChange={(position) =>
+            onUpdate({
+              checkboxPosition: position === "right" ? "right" : undefined,
+            })
+          }
+        />
         <RequiredToggle
           label="Checked by default"
           checked={field.defaultValue === true}

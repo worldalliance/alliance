@@ -1,9 +1,10 @@
 import { withCount } from "@alliance/common/plural";
-import { CircleAlert, LoaderCircle } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import { useEffect, useRef } from "react";
 import Button, { ButtonVariant, buttonVariants } from "../../../ui/Button";
 import { cn } from "../../../ui/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../ui/Popover";
+import Spinner from "../../../ui/Spinner";
 import {
   IssueGate,
   type IssueRow,
@@ -89,10 +90,7 @@ export function IssuesButton({
             </>
           ) : formLoading || sources.pending > 0 ? (
             <>
-              <LoaderCircle
-                aria-hidden="true"
-                className="size-4 animate-spin"
-              />
+              <Spinner decorative size="small" />
               Checking
             </>
           ) : (

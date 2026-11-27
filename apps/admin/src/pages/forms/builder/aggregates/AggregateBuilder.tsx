@@ -11,6 +11,7 @@ import { useId, useMemo, useState } from "react";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { EmptyState } from "../../../../ui/EmptyState";
 import { Input } from "../../../../ui/Input";
+import { Radio } from "../../../../ui/Radio";
 import { Select } from "../../../../ui/Select";
 import { Field, FieldGroup, FormSection } from "../../../../ui/templates/Form";
 
@@ -102,20 +103,16 @@ function ValueEditor({
     <FieldGroup label={label}>
       <div className="flex gap-4">
         <label className="flex items-center gap-2">
-          <input
-            type="radio"
+          <Radio
             name={name}
-            className="size-4 accent-accent focus-ring"
             checked={value.type === "number"}
             onChange={() => onChange({ type: "number", value: 0 })}
           />
           Static number
         </label>
         <label className="flex items-center gap-2">
-          <input
-            type="radio"
+          <Radio
             name={name}
-            className="size-4 accent-accent focus-ring"
             checked={value.type === "numberfield"}
             disabled={!firstField}
             onChange={() =>
@@ -211,7 +208,20 @@ export function AggregateBuilder({
         />
       )}
       {views.map((view, index) => (
-        <FormSection key={view.id} title={`View ${index + 1}`}>
+        <FormSection
+          key={view.id}
+          title={`View ${index + 1}`}
+          actions={
+            <Button
+              variant={ButtonVariant.DangerOutline}
+              onClick={() =>
+                updateViews(views.filter((other) => other.id !== view.id))
+              }
+            >
+              Remove view
+            </Button>
+          }
+        >
           <Field label="Title">
             {(control) => (
               <Input
@@ -268,14 +278,6 @@ export function AggregateBuilder({
               }
             />
           ))}
-          <Button
-            variant={ButtonVariant.DangerOutline}
-            onClick={() =>
-              updateViews(views.filter((other) => other.id !== view.id))
-            }
-          >
-            Remove view
-          </Button>
         </FormSection>
       ))}
     </div>

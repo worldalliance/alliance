@@ -60,6 +60,20 @@ export function RowListBuilder({
             ? withCount(list.rows.length, "row")
             : "Give each member one row of values to use in this form."
         }
+        actions={
+          list && (
+            <Button
+              variant={ButtonVariant.DangerOutline}
+              onClick={() => {
+                const { rowList: _removed, ...rest } = schema;
+                onSchemaChange(rest);
+                setText("");
+              }}
+            >
+              Remove the row list
+            </Button>
+          )
+        }
       >
         <Field
           label="Rows (JSON)"
@@ -86,27 +100,13 @@ export function RowListBuilder({
             />
           )}
         </Field>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={ButtonVariant.Primary}
-            onClick={applyRows}
-            disabled={!edited}
-          >
-            Use these rows
-          </Button>
-          {list && (
-            <Button
-              variant={ButtonVariant.DangerOutline}
-              onClick={() => {
-                const { rowList: _removed, ...rest } = schema;
-                onSchemaChange(rest);
-                setText("");
-              }}
-            >
-              Remove the row list
-            </Button>
-          )}
-        </div>
+        <Button
+          variant={ButtonVariant.Primary}
+          onClick={applyRows}
+          disabled={!edited}
+        >
+          Use these rows
+        </Button>
         {list && (
           <FieldGroup
             label="Fields that identify a row"
