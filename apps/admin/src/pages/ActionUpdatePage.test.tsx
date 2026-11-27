@@ -15,6 +15,7 @@ import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
 import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
+import { ShortcutsProvider } from "../shell/shortcuts";
 import { ToastProvider } from "../ui/ToastProvider";
 import ActionUpdatePage from "./ActionUpdatePage";
 
@@ -78,7 +79,9 @@ const renderPage = (
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <RouterProvider router={router} />
+        <ShortcutsProvider>
+          <RouterProvider router={router} />
+        </ShortcutsProvider>
       </ToastProvider>
     </QueryClientProvider>,
   );

@@ -1,17 +1,11 @@
-import { useEffect, useRef, type RefObject } from "react";
-import { isTextEntry } from "../../../../lib/useDraftHistory";
+import { type RefObject } from "react";
+import { useShortcut } from "../../../../shell/shortcuts";
 import { CanvasTargetKind, elementTarget } from "./canvasSelection";
 import {
   InspectorScope,
   SECTION_ON_SELECT,
   type CanvasSelectionState,
 } from "./useCanvasSelection";
-
-/** Open popups, which take Escape to close themselves. */
-const POPUP =
-  '[role="menu"], [role="listbox"], [role="dialog"], [role="alertdialog"]';
-/** Controls that take Escape for themselves. */
-const OWNS_ESCAPE = `${POPUP}, [role="combobox"]`;
 
 /** The selection one level up: child → element → page → Form, or null on Form. */
 function selectionAbove(canvas: CanvasSelectionState): (() => void) | null {
@@ -37,8 +31,8 @@ function selectionAbove(canvas: CanvasSelectionState): (() => void) | null {
 
 /**
  * Escape moves the selection up a level while focus is in the builder, or
- * on nothing, and not in a text field, menu, list or dialog, which take
- * Escape for themselves.
+ * on nothing. The shortcut registry leaves out text fields, menus, lists and
+ * dialogs, which take Escape for themselves.
  */
 export function useEscapeUp({
   root,
@@ -49,32 +43,18 @@ export function useEscapeUp({
   canvas: CanvasSelectionState;
   active: boolean;
 }) {
-  const latest = useRef(canvas);
-  useEffect(() => {
-    latest.current = canvas;
-  });
-  useEffect(() => {
-    if (!active) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      const { target } = event;
-      const inBuilder =
-        target === document.body ||
-        (target instanceof Node && !!root.current?.contains(target));
+  useShortcut({
+    keys: "escape",
+    label: "Select the parent",
+    run: () => {
+      const focused = document.activeElement;
       if (
-        !inBuilder ||
-        isTextEntry(target) ||
-        (target instanceof Element && target.closest(OWNS_ESCAPE)) ||
-        document.querySelector(POPUP)
+        !active ||
+        (focused !== document.body && !root.current?.contains(focused))
       ) {
         return;
       }
-      const up = selectionAbove(latest.current);
-      if (!up) return;
-      event.preventDefault();
-      up();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [active, root]);
+      selectionAbove(canvas)?.();
+    },
+  });
 }

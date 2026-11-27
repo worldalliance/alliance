@@ -4,8 +4,9 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
-import { FormBuilder } from "../../pages/forms/builder/FormBuilder";
 import LeaveGuard from "../../components/LeaveGuard";
+import { FormBuilder } from "../../pages/forms/builder/FormBuilder";
+import { ShortcutsProvider } from "../../shell/shortcuts";
 import { SiteOriginLinkProvider } from "../../ui/SiteAppProvider";
 import { ToastProvider } from "../../ui/ToastProvider";
 
@@ -26,7 +27,9 @@ function renderBuilder(builder: ReactNode, url = "/") {
   render(
     <SiteOriginLinkProvider origin="https://worldalliance.org">
       <ToastProvider>
-        <RouterProvider router={router} />
+        <ShortcutsProvider>
+          <RouterProvider router={router} />
+        </ShortcutsProvider>
       </ToastProvider>
     </SiteOriginLinkProvider>,
     queryWrapper(),

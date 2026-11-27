@@ -4,17 +4,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../../../../components/LeaveGuard";
 import { findDisplayBlock } from "../../../../lib/displayBlockById";
 import { selectElement } from "../../../../lib/testing/formCanvas";
+import { ShortcutsProvider } from "../../../../shell/shortcuts";
 import { ToastProvider } from "../../../../ui/ToastProvider";
 import { FormBuilder } from "../FormBuilder";
-import LeaveGuard from "../../../../components/LeaveGuard";
 import { OutputBuilder } from "../outputs/OutputBuilder";
 
 const renderIn = (element: ReactElement) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ToastProvider>{element}</ToastProvider>
+      <ToastProvider>
+        <ShortcutsProvider>{element}</ShortcutsProvider>
+      </ToastProvider>
     </QueryClientProvider>,
   );
 

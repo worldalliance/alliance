@@ -29,6 +29,7 @@ import {
   settings,
 } from "../../../lib/testing/formCanvas";
 import { renderFormBuilder } from "../../../lib/testing/renderFormBuilder";
+import { ShortcutsProvider } from "../../../shell/shortcuts";
 import { SiteOriginLinkProvider } from "../../../ui/SiteAppProvider";
 import { ToastProvider } from "../../../ui/ToastProvider";
 import { FormBuilder } from "./FormBuilder";
@@ -294,7 +295,9 @@ const renderStatefulFormBuilder = (initialFormId?: number) =>
                 path: "/",
                 element: (
                   <LeaveGuard>
-                    <StatefulFormBuilder initialFormId={initialFormId} />
+                    <ShortcutsProvider>
+                      <StatefulFormBuilder initialFormId={initialFormId} />
+                    </ShortcutsProvider>
                   </LeaveGuard>
                 ),
               },

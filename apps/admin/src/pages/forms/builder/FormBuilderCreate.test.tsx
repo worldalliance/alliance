@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../../../components/LeaveGuard";
 import { answerLeaveGuard } from "../../../lib/testing/leaveGuard";
 import { renderFormBuilder } from "../../../lib/testing/renderFormBuilder";
+import { ShortcutsProvider } from "../../../shell/shortcuts";
 import { SiteOriginLinkProvider } from "../../../ui/SiteAppProvider";
 import { ToastProvider } from "../../../ui/ToastProvider";
 import FormBuilderPage from "../../FormBuilder";
@@ -74,7 +75,9 @@ describe("FormBuilder saving a new form", () => {
       <SiteOriginLinkProvider origin="https://worldalliance.org">
         <QueryClientProvider client={new QueryClient()}>
           <ToastProvider>
-            <RouterProvider router={router} />
+            <ShortcutsProvider>
+              <RouterProvider router={router} />
+            </ShortcutsProvider>
           </ToastProvider>
         </QueryClientProvider>
       </SiteOriginLinkProvider>,
