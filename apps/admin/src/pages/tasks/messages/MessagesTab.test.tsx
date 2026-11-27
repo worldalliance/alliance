@@ -3,11 +3,18 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useQuery } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
-import ActionUpdatesTab from "./ActionUpdatesTab";
+import { SAVE_FAILED_FALLBACK } from "../../../ui/templates/Form";
+import { ToastProvider } from "../../../ui/ToastProvider";
+import { TaskMessages } from "./MessagesTab";
 
 let answer: (request: Request) => Response | Promise<Response> = () =>
   Response.json({});
@@ -44,9 +51,11 @@ const HangingActionReload = ({ children }: { children: ReactNode }) => {
   return children;
 };
 
-// ToastProvider keeps an empty alert region of its own.
-const tabAlert = () =>
-  screen.queryAllByRole("alert").find((el) => el.tagName === "P") ?? null;
+// ToastProvider keeps an empty alert region of its own, outside the tab.
+const tabAlert = () => {
+  const tab = screen.queryByTestId("tab");
+  return tab ? (within(tab).queryAllByRole("alert")[0] ?? null) : null;
+};
 const findTabAlert = () =>
   waitFor(() => {
     const alert = tabAlert();
@@ -60,13 +69,19 @@ const renderTab = (
 ) => {
   const query = queryWrapper();
   query.client.setQueryData(queryKeys.actionAdmin(4), null);
+  const setError = jest.fn();
   const tab = (
-    <ActionUpdatesTab
-      actionId={4}
-      updates={updates}
-      events={[]}
-      availableTags={[]}
-    />
+    <div data-testid="tab">
+      <TaskMessages
+        actionId={4}
+        updates={updates}
+        events={[]}
+        tags={[]}
+        suiteId={null}
+        openFollowUpForms={() => {}}
+        setError={setError}
+      />
+    </div>
   );
   render(
     <ToastProvider>
@@ -90,17 +105,17 @@ const renderTab = (
   );
   const actionInvalidated = () =>
     query.client.getQueryState(queryKeys.actionAdmin(4))?.isInvalidated;
-  return { client: query.client, actionInvalidated };
+  return { client: query.client, actionInvalidated, setError };
 };
 
 const createUpdate = (params: { actionReloadHangs?: boolean } = {}) => {
   const tab = renderTab([], params);
-  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
     target: { value: "Hearing scheduled" },
   });
   fireEvent.change(
     screen.getByRole("textbox", {
-      name: "Notif text for people who completed",
+      name: "Notification text for members who completed",
     }),
     { target: { value: "a hearing on the bill" } },
   );
@@ -115,7 +130,7 @@ const refusing = (status: number, message: string) => {
   answer = () => Response.json({ statusCode: status, message }, { status });
 };
 
-describe("ActionUpdatesTab", () => {
+describe("MessagesTab", () => {
   it("refreshes the action and opens the created update", async () => {
     answer = () =>
       Response.json(
@@ -160,7 +175,7 @@ describe("ActionUpdatesTab", () => {
       return Response.json({ id: 9 }, { status: 201 });
     };
     renderTab();
-    fireEvent.change(screen.getByPlaceholderText("Title..."), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
       target: { value: "Hearing scheduled" },
     });
     fireEvent.change(screen.getByDisplayValue("No notification"), {
@@ -173,14 +188,14 @@ describe("ActionUpdatesTab", () => {
     fireEvent.click(create);
     expect(
       screen.getByText(
-        `Write at least one group's result. Or set the audience to "No notification".`,
+        `Couldn't create: Write at least one group's result. Or set the audience to "No notification".`,
       ),
     ).toBeTruthy();
     expect(body).toBeUndefined();
 
     fireEvent.change(
       screen.getByRole("textbox", {
-        name: /^Notif text for people who didn't complete/,
+        name: /^Notification text for members who didn't complete/,
       }),
       { target: { value: "a hearing; there's still time" } },
     );
@@ -221,7 +236,7 @@ describe("ActionUpdatesTab", () => {
     createUpdate();
 
     expect((await findTabAlert()).textContent).toBe(
-      "notificationMode must be one of",
+      "Couldn't create: notificationMode must be one of",
     );
   });
 
@@ -231,7 +246,7 @@ describe("ActionUpdatesTab", () => {
     createUpdate();
 
     expect((await findTabAlert()).textContent).toBe(
-      "Couldn't create the update.",
+      `Couldn't create: ${SAVE_FAILED_FALLBACK}`,
     );
   });
 
@@ -244,18 +259,20 @@ describe("ActionUpdatesTab", () => {
     createUpdate();
 
     expect((await findTabAlert()).textContent).toBe(
-      "Couldn't create the update.",
+      `Couldn't create: ${SAVE_FAILED_FALLBACK}`,
     );
   });
 });
 
+const DELETE = { name: /^Delete: / };
+const deleteBusy = () =>
+  screen
+    .getAllByRole("button", DELETE)
+    .map((button) => button.getAttribute("aria-busy") === "true");
+
 const clickDelete = (button: HTMLElement) => {
   fireEvent.click(button);
-  const confirmButton = screen
-    .getAllByRole("button", { name: "Delete" })
-    .at(-1);
-  if (!confirmButton) throw new Error("no confirm button");
-  fireEvent.click(confirmButton);
+  fireEvent.click(screen.getByRole("button", { name: "Delete update" }));
 };
 
 describe("deleting an update", () => {
@@ -266,7 +283,7 @@ describe("deleting an update", () => {
   const deleteExisting = (params: { actionReloadHangs?: boolean } = {}) => {
     const tab = renderTab([existing], params);
     tab.client.setQueryData(queryKeys.actionUpdateAdmin(7), existing);
-    clickDelete(screen.getByRole("button", { name: "Delete" }));
+    clickDelete(screen.getByRole("button", DELETE));
     return tab;
   };
 
@@ -278,26 +295,27 @@ describe("deleting an update", () => {
     };
     renderTab([existing]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", DELETE));
     expect(
-      screen.getByText('Delete "Old news"? Members stop seeing it.'),
+      screen.getByText("Delete the project update “Old news”?"),
     ).toBeTruthy();
+    expect(screen.getByText("Members stop seeing it.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await Bun.sleep(30);
 
     expect(deleted).toBe(false);
-    expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
+    expect(deleteBusy()).toEqual([false]);
   });
 
   it("drops the cached update and refreshes the action", async () => {
-    const { client, actionInvalidated } = deleteExisting();
+    const { client, actionInvalidated, setError } = deleteExisting();
 
     await waitFor(() => expect(actionInvalidated()).toBe(true));
     expect(client.getQueryData(queryKeys.actionUpdateAdmin(7))).toBeUndefined();
-    expect(tabAlert()).toBeNull();
+    expect(setError.mock.calls).toEqual([[null]]);
   });
 
-  it("hides the delete while it's in flight", async () => {
+  it("holds the delete busy while it's in flight", async () => {
     let release = () => {};
     deleteAnswer = async () => {
       await new Promise<void>((resolve) => (release = resolve));
@@ -306,14 +324,12 @@ describe("deleting an update", () => {
 
     const { actionInvalidated } = deleteExisting();
 
-    await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Delete" })).toBeNull(),
-    );
+    await waitFor(() => expect(deleteBusy()).toEqual([true]));
     release();
     await waitFor(() => expect(actionInvalidated()).toBe(true));
   });
 
-  it("keeps the delete hidden until the action has reloaded", async () => {
+  it("keeps the delete busy until the action has reloaded", async () => {
     let deleted = false;
     deleteAnswer = () => {
       deleted = true;
@@ -324,31 +340,28 @@ describe("deleting an update", () => {
     await waitFor(() => expect(deleted).toBe(true));
     await Bun.sleep(30);
 
-    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(deleteBusy()).toEqual([true]);
   });
 
-  it("keeps each delete hidden while overlapping deletes are in flight", async () => {
+  it("keeps each delete busy while overlapping deletes are in flight", async () => {
     deleteAnswer = () => new Promise<Response>(() => {});
     renderTab([existing, { ...existing, id: 8, title: "Older news" }]);
 
-    const [first, second] = screen.getAllByRole("button", { name: "Delete" });
+    const [first, second] = screen.getAllByRole("button", DELETE);
     clickDelete(first);
+    await waitFor(() => expect(deleteBusy()).toEqual([true, false]));
     clickDelete(second);
 
-    await waitFor(() =>
-      expect(screen.queryAllByRole("button", { name: "Delete" })).toHaveLength(
-        0,
-      ),
-    );
+    await waitFor(() => expect(deleteBusy()).toEqual([true, true]));
   });
 
   it("treats an update already deleted elsewhere as deleted", async () => {
     deleteAnswer = () => Response.json({ statusCode: 404 }, { status: 404 });
 
-    const { actionInvalidated } = deleteExisting();
+    const { actionInvalidated, setError } = deleteExisting();
 
     await waitFor(() => expect(actionInvalidated()).toBe(true));
-    expect(tabAlert()).toBeNull();
+    expect(setError.mock.calls).toEqual([[null]]);
   });
 
   it("says why the server refused the delete and keeps the update", async () => {
@@ -359,10 +372,12 @@ describe("deleting an update", () => {
         { status: 403 },
       );
 
-    const { client, actionInvalidated } = deleteExisting();
+    const { client, actionInvalidated, setError } = deleteExisting();
 
-    expect((await findTabAlert()).textContent).toBe("Not allowed");
-    expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
+    await waitFor(() =>
+      expect(setError).toHaveBeenLastCalledWith("Not allowed"),
+    );
+    expect(deleteBusy()).toEqual([false]);
     expect(client.getQueryData(queryKeys.actionUpdateAdmin(7))).toEqual(
       existing,
     );
@@ -377,7 +392,7 @@ it("creates an update with no notification without notification text", async () 
     return Response.json({ id: 9 }, { status: 201 });
   };
   renderTab();
-  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
     target: { value: "Quiet update" },
   });
   const create = screen.getByRole("button", {
@@ -400,18 +415,18 @@ it("asks for a title instead of creating, until one is typed", async () => {
   fireEvent.click(
     screen.getByRole("button", { name: "Create and write content" }),
   );
-  expect(screen.getByText("Add a title.")).toBeTruthy();
+  expect(screen.getByText("Couldn't create: Add a title.")).toBeTruthy();
   expect(requests).toBe(0);
 
-  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
     target: { value: "Quiet update" },
   });
-  expect(screen.queryByText("Add a title.")).toBeNull();
+  expect(screen.queryByText(/Add a title\./)).toBeNull();
 });
 
 it("asks for the tag when the audience is a tag", () => {
   renderTab();
-  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
     target: { value: "Tagged update" },
   });
   fireEvent.change(screen.getByDisplayValue("No notification"), {
@@ -419,7 +434,7 @@ it("asks for the tag when the audience is a tag", () => {
   });
   fireEvent.change(
     screen.getByRole("textbox", {
-      name: /^Notif text for people who didn't complete/,
+      name: /^Notification text for members who didn't complete/,
     }),
     { target: { value: "a hearing on the bill" } },
   );
@@ -428,7 +443,9 @@ it("asks for the tag when the audience is a tag", () => {
     screen.getByRole("button", { name: "Create and write content" }),
   );
 
-  expect(screen.getByText("Pick the tag to notify.")).toBeTruthy();
+  expect(
+    screen.getByText("Couldn't create: Pick the tag to notify."),
+  ).toBeTruthy();
 });
 
 it("names every missing field at once", () => {
@@ -438,7 +455,7 @@ it("names every missing field at once", () => {
   });
   fireEvent.change(
     screen.getByRole("textbox", {
-      name: /^Notif text for people who didn't complete/,
+      name: /^Notification text for members who didn't complete/,
     }),
     { target: { value: "a hearing on the bill" } },
   );
@@ -447,12 +464,14 @@ it("names every missing field at once", () => {
     screen.getByRole("button", { name: "Create and write content" }),
   );
 
-  expect(screen.getByText("Add a title. Pick the tag to notify.")).toBeTruthy();
+  expect(
+    screen.getByText("Couldn't create: Add a title. Pick the tag to notify."),
+  ).toBeTruthy();
 });
 
 it("asks for a date once the date is cleared", () => {
   renderTab();
-  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
     target: { value: "Undated update" },
   });
   fireEvent.change(document.querySelector('input[type="datetime-local"]')!, {
@@ -463,13 +482,65 @@ it("asks for a date once the date is cleared", () => {
     screen.getByRole("button", { name: "Create and write content" }),
   );
 
-  expect(screen.getByText("Pick a date.")).toBeTruthy();
+  expect(screen.getByText("Couldn't create: Pick a date.")).toBeTruthy();
+});
+
+it("lists the newest update first", () => {
+  renderTab([
+    {
+      ...existing,
+      id: 8,
+      title: "Older news",
+      date: "2026-01-01T00:00:00.000Z",
+    },
+    {
+      ...existing,
+      id: 9,
+      title: "Newer news",
+      date: "2026-03-01T00:00:00.000Z",
+    },
+  ]);
+
+  expect(
+    screen
+      .getAllByRole("link", { name: /^Edit: / })
+      .map((l) => l.getAttribute("aria-label")),
+  ).toEqual(["Edit: Newer news", "Edit: Older news"]);
 });
 
 it("names each update's edit link after its update", () => {
   renderTab([existing, { ...existing, id: 8, title: "Older news" }]);
 
   expect(
-    screen.getByRole("link", { name: "Edit Older news" }).getAttribute("href"),
+    screen.getByRole("link", { name: "Edit: Older news" }).getAttribute("href"),
   ).toBe("/tasks/4/updates/8");
+});
+
+it("points to the suite's reminders and the follow-up forms, without composing them", () => {
+  const openFollowUpForms = jest.fn();
+  render(
+    <ToastProvider>
+      <MemoryRouter>
+        <TaskMessages
+          actionId={4}
+          updates={[]}
+          events={[]}
+          tags={[]}
+          suiteId={12}
+          openFollowUpForms={openFollowUpForms}
+          setError={() => {}}
+        />
+      </MemoryRouter>
+    </ToastProvider>,
+    { wrapper: queryWrapper().wrapper },
+  );
+
+  expect(
+    screen
+      .getByRole("link", { name: "Open the suite's reminders" })
+      .getAttribute("href"),
+  ).toBe("/tasks/suites/12?tab=reminders");
+  fireEvent.click(screen.getByRole("button", { name: "Open follow-up forms" }));
+  expect(openFollowUpForms).toHaveBeenCalled();
+  expect(screen.getByText("No project updates yet")).toBeTruthy();
 });

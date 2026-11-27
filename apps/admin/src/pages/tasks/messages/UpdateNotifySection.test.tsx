@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { NotificationHeldBanner } from "./ActionUpdateRecognition";
+import { NotificationHeldBanner } from "./UpdateNotifySection";
 
 describe("NotificationHeldBanner", () => {
   it("says the notifications are on hold, and why", () => {

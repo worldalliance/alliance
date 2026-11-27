@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { actionUpdateAdmin } from "../lib/testing/actionUpdateAdmin";
+import { actionUpdateAdmin } from "../../../lib/testing/actionUpdateAdmin";
+import { pacific } from "./updateRules";
 import {
   HiddenFromMembersBanner,
   VisibilityControls,
-} from "./ActionUpdateVisibility";
+} from "./UpdateVisibilitySection";
 
 const HOUR_MS = 60 * 60 * 1000;
 const past = new Date(Date.now() - HOUR_MS).toISOString();
@@ -33,7 +34,11 @@ describe("HiddenFromMembersBanner", () => {
         update={actionUpdateAdmin({ visibleAt: null })}
       />,
     );
-    expect(screen.getByText(/publishes the first time you save/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        /first save of its content on the Content tab publishes/,
+      ),
+    ).toBeTruthy();
   });
 
   it("says when a scheduled update publishes", () => {
@@ -42,9 +47,7 @@ describe("HiddenFromMembersBanner", () => {
         update={actionUpdateAdmin({ visibleAt: future })}
       />,
     );
-    expect(
-      screen.getByText(new Date(future).toLocaleString(), { exact: false }),
-    ).toBeTruthy();
+    expect(screen.getByText(pacific(future), { exact: false })).toBeTruthy();
   });
 
   it("shows nothing once the update is published", () => {
@@ -72,6 +75,23 @@ describe("VisibilityControls", () => {
       screen.getByRole("button", { name: "Unpublish until displayed date" }),
     );
     expect(onUnpublish).toHaveBeenCalled();
+  });
+
+  it("limits a published update to members who can see the task", () => {
+    renderControls({ visibleAt: past });
+    expect(
+      screen.getByText(/to everyone who can see the task\.$/),
+    ).toBeTruthy();
+  });
+
+  it("won't publish over unsaved details", () => {
+    renderControls({ visibleAt: future, unsaved: true });
+    expect(screen.getByText("Save your changes first.")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "Publish now" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
   });
 
   it("won't unpublish over unsaved details", () => {

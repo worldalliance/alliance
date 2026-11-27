@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import type { CollectiveResultTexts } from "../lib/updatePreview";
+import type { CollectiveResultTexts } from "../../../lib/updatePreview";
 import { PreviewCountsKind, UpdatePreview } from "./UpdatePreview";
 
 const texts: CollectiveResultTexts = {
@@ -8,7 +8,7 @@ const texts: CollectiveResultTexts = {
 };
 
 const cardOf = (label: string) => {
-  const found = screen.getByText(label).closest("div.rounded-md");
+  const found = screen.getByRole("article", { name: label });
   if (!(found instanceof HTMLElement)) throw new Error(`no card for ${label}`);
   return found;
 };
@@ -30,8 +30,8 @@ describe("UpdatePreview", () => {
       />,
     );
 
-    expect(card("Completed the action").getByText("1 member")).toBeTruthy();
-    const skipped = card("Didn't complete the action");
+    expect(card("Completed the task").getByText("1 member")).toBeTruthy();
+    const skipped = card("Didn't complete the task");
     expect(skipped.getByText("9 members")).toBeTruthy();
     expect(skipped.getByText(/Not notified/)).toBeTruthy();
   });

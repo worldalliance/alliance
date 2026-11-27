@@ -16,13 +16,7 @@ src/components/ActionTimeline.test.tsx
 src/components/ActionTimeline.tsx
 src/components/ActionTimelineBar.tsx
 src/components/ActionTimelineRowMeta.tsx
-src/components/ActionUpdateCardImageField.tsx
-src/components/ActionUpdateNotificationAudience.tsx
-src/components/ActionUpdateRecognition.tsx
-src/components/ActionUpdateVisibility.tsx
-src/components/ActionUpdatesTab.tsx
 src/components/CohortDecisionCorrectionModal.tsx
-src/components/CollectiveResultFields.tsx
 src/components/CreateActionMenu.tsx
 src/components/CreateEventForm.tsx
 src/components/EventManagementTab.tsx
@@ -30,8 +24,6 @@ src/components/FormSection.tsx
 src/components/HomePlacementBadges.tsx
 src/components/NewActionTimeline.tsx
 src/components/PriorityFollowUps.tsx
-src/components/UpdatePreview.tsx
-src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx

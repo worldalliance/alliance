@@ -1,4 +1,4 @@
-/* alliance/max-lines 750 -- data: the page map, one entry per area, place, tab and record */
+/* alliance/max-lines 800 -- data: the page map, one entry per area, place, tab and record */
 /**
  * The admin's page map: every area, place, tab and record. The sidebar,
  * palette, breadcrumbs and titles all read it, so a place is added or moved
@@ -551,6 +551,10 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.AllTasks,
     label: "Project update",
     path: "/tasks/:actionId/updates/:updateId",
+    tabs: [
+      { id: "content", label: "Content" },
+      { id: "details", label: "Details" },
+    ],
   },
   {
     id: RecordId.ProjectTask,

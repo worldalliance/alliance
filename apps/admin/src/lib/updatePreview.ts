@@ -36,8 +36,8 @@ export enum PreviewVariation {
 }
 
 export const PREVIEW_VARIATION_LABELS: Record<PreviewVariation, string> = {
-  [PreviewVariation.Completed]: "Completed the action",
-  [PreviewVariation.DidNotComplete]: "Didn't complete the action",
+  [PreviewVariation.Completed]: "Completed the task",
+  [PreviewVariation.DidNotComplete]: "Didn't complete the task",
 };
 
 export const previewVariationCount: Record<

@@ -1,8 +1,8 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { formOf } from "../lib/actionUpdateDetails";
-import { actionUpdateAdmin } from "../lib/testing/actionUpdateAdmin";
+import { formOf } from "../../../lib/actionUpdateDetails";
+import { actionUpdateAdmin } from "../../../lib/testing/actionUpdateAdmin";
 import { AudienceUpdatePreview } from "./AudienceUpdatePreview";
 
 serveApi(

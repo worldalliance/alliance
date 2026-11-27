@@ -1,7 +1,7 @@
 import type { RecognitionPreviewCountsDto } from "@alliance/shared/client";
 import type { UseQueryResult } from "@tanstack/react-query";
-import type { ActionUpdateForm } from "../lib/actionUpdateDetails";
-import { useRecognitionPreviewCounts } from "../lib/useRecognitionPreviewCounts";
+import type { ActionUpdateForm } from "../../../lib/actionUpdateDetails";
+import { useRecognitionPreviewCounts } from "../../../lib/useRecognitionPreviewCounts";
 import {
   PreviewCountsKind,
   UpdatePreview,
