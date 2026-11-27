@@ -68,6 +68,7 @@ The same component is embedded in the action Task form tab (`pages/ActionDashboa
   - Click the slug to edit it inline. Enter saves via PATCH `/tasks/forms/{formId}/slug`; Escape or blur cancels.
   - A server refusal is shown inline (`role=alert`) and keeps the draft open.
   - A copy button copies the slug, toasting "Slug copied" or "Could not copy the slug." (`SlugField.tsx:39-42`).
+- **B2a** On task forms only, a "Show the step outline on the task card" checkbox ("Turn it off for long tasks."), checked by default, above the page list (added in #1096, after this inventory was written; `FormBuilderCanvas.tsx`). Unchecking saves `taskOutline: false` on the schema; checking removes the key. It is an ordinary schema edit: undoable, saved by Save form.
 - **B3** **There is no form-title editor.** The title is set only at creation: "Untitled Form", or "{actionName} form" when embedded in an action (`FormBuilder.tsx:99`).
 - **B4** Issue list button (`form-canvas/IssueList.tsx`):
   - The button shows "N issues" in red, "Checking" with a spinner while source forms load, or "No issues". It is hidden when there is nothing to show.

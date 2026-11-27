@@ -34,3 +34,4 @@
 - claude:0289285c-67d1-4400-9edd-30b1398ba216 (subagent)
 - claude:339b2745-2c85-47ed-80d0-3ad1d244ba7b (subagent)
 - claude:42a848df-0932-453c-bfd3-e7f1608be621 (tasks area lead, area-tasks-lead)
+- claude:f5d3f8db-43e3-440f-86ca-9831cbcec297 (subagent)
